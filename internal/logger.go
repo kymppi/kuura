@@ -7,24 +7,24 @@ import (
 )
 
 var (
-    logger     *slog.Logger
-    loggerOnce sync.Once
-    logLevel   = slog.LevelInfo
+	logger     *slog.Logger
+	loggerOnce sync.Once
+	logLevel   = slog.LevelInfo
 )
 
 func SetLoggerDebugMode(enabled bool) {
-    if enabled {
-        logLevel = slog.LevelDebug
-    } else {
-        logLevel = slog.LevelInfo
-    }
+	if enabled {
+		logLevel = slog.LevelDebug
+	} else {
+		logLevel = slog.LevelInfo
+	}
 }
 
 func ProvideLogger() *slog.Logger {
-    loggerOnce.Do(func() {
-        logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-            Level: logLevel,
-        }))
-    })
-    return logger
+	loggerOnce.Do(func() {
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: logLevel,
+		}))
+	})
+	return logger
 }
