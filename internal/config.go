@@ -10,6 +10,8 @@ type Config struct {
 	DATABASE_URL   string `env:"DATABASE_URL" envDefault:""`
 	RUN_MIGRATIONS bool   `env:"RUN_MIGRATIONS" envDefault:"false"`
 	DEBUG          bool   `env:"DEBUG" envDefault:"false"`
+
+	JWK_KEK_PATH string `env:"JWK_KEK_PATH" envDefault:"/var/kuura/.kek"`
 }
 
 func ParseConfig() (*Config, error) {

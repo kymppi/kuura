@@ -1,5 +1,7 @@
 package main
 
+//go:generate sqlc generate
+
 import (
 	"fmt"
 	"log/slog"

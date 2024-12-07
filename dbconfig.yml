@@ -1,4 +1,4 @@
 development:
   dialect: postgres
-  datasource: host=localhost user=postgres password=postgres dbname=kuura sslmode=disable
+  datasource: host=localhost user=kuura password=kuura dbname=kuura sslmode=disable port=4432
   dir: 'internal/db_migrations/'

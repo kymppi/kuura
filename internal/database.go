@@ -163,7 +163,7 @@ func (dm *DatabaseManager) CheckMigrations(
 		slog.Int("count", len(records)),
 	)
 
-	return len(records) == len(migrations), nil
+	return len(records) != len(migrations), nil
 }
 
 func (dm *DatabaseManager) ApplyMigrations(
