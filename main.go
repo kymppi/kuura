@@ -28,11 +28,24 @@ func main() {
 		Branch = "unknown"
 	}
 
+	config, err := kuura.ParseConfig()
+	if err != nil {
+		fmt.Println("Failed to load configuration:", err)
+		os.Exit(1)
+	}
+
+	loggerConfig := kuura.LoggerConfig{
+		DebugEnabled:  debugMode,
+		PrettyEnabled: config.GO_ENV != "production",
+	}
+	loggerManager := kuura.NewLogger(loggerConfig)
+	logger := loggerManager.Get()
+
 	rootCmd = &cobra.Command{
 		Use:     "kuura",
 		Short:   "Kuura Authentication Server",
 		Long:    `Kuura is an authentication server with great M2M support.`,
-		Run:     kuura.RootCommand,
+		Run:     kuura.RootCommand(config, logger),
 		Version: formatVersion(GitSHA, Branch),
 	}
 
@@ -43,12 +56,9 @@ func main() {
 		"enable debug logging",
 	)
 
-	kuura.SetLoggerDebugMode(debugMode)
+	rootCmd.AddCommand(kuura.MigrateCommand(logger, config))
 
-	logger := kuura.ProvideLogger()
-
-	// rootCmd.AddCommand(kuura.VersionCommand())
-	rootCmd.AddCommand(kuura.MigrateCommand(logger))
+	logger.Info("Starting Kuura", slog.String("version", rootCmd.Version))
 
 	if err := rootCmd.Execute(); err != nil {
 		logger.Error("Command execution failed", slog.String("error", err.Error()))

@@ -22,3 +22,5 @@
 *tmp*
 
 dist/
+
+.env.local

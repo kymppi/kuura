@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres_kuura
+    shm_size: 128mb
+    ports:
+      - "4432:5432"
+    environment:
+      POSTGRES_USER: kuura
+      POSTGRES_PASSWORD: kuura
+      POSTGRES_DB: kuura
+    volumes:
+      - kuura_data:/var/lib/postgresql/data
+
+volumes:
+  kuura_data:

@@ -3,11 +3,12 @@ package kuura
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/kymppi/kuura/internal/db_migrations"
 )
 
-func handleMigrations(dbManager *DatabaseManager, run bool) error {
+func handleMigrations(logger *slog.Logger, dbManager *DatabaseManager, run bool) error {
 	migrationSource := db_migrations.Migrations
 	needsMigration, err := dbManager.CheckMigrations(migrationSource)
 

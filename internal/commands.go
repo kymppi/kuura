@@ -11,29 +11,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func RootCommand(cmd *cobra.Command, args []string) {
-	ctx, stop := signal.NotifyContext(context.Background(),
-		os.Interrupt,
-		syscall.SIGTERM,
-	)
-	defer stop()
+func RootCommand(config *Config, logger *slog.Logger) func(cmd *cobra.Command, args []string) {
+	return func(cmd *cobra.Command, args []string) {
+		ctx, stop := signal.NotifyContext(context.Background(),
+			os.Interrupt,
+			syscall.SIGTERM,
+		)
+		defer stop()
 
-	logger := ProvideLogger()
-
-	if err := runApplication(ctx, logger); err != nil {
-		logger.Error("Fatal Application Error", slog.String("error", err.Error()))
-		os.Exit(1)
+		if err := runApplication(ctx, logger, config); err != nil {
+			logger.Error("Fatal Application Error", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
 	}
 }
 
-func runApplication(ctx context.Context, logger *slog.Logger) error {
-	logger.Info("Loading configuration...")
-	config, err := ParseConfig()
-	if err != nil {
-		return fmt.Errorf("loading configuration failed: %w", err)
-	}
-	logger.Info("Configuration loaded successfully")
-
+func runApplication(ctx context.Context, logger *slog.Logger, config *Config) error {
 	dbManager := NewDatabaseManager(logger)
 
 	logger.Info("Automatic migration apply mode is enabled")
@@ -44,7 +37,7 @@ func runApplication(ctx context.Context, logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	if err := handleMigrations(dbManager, config.RUN_MIGRATIONS); err != nil {
+	if err := handleMigrations(logger, dbManager, config.RUN_MIGRATIONS); err != nil {
 		return err
 	}
 
@@ -66,17 +59,11 @@ func VersionCommand() *cobra.Command {
 	}
 }
 
-func MigrateCommand(logger *slog.Logger) *cobra.Command {
+func MigrateCommand(logger *slog.Logger, config *Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "migrate",
 		Short: "Run database migrations",
 		Run: func(cmd *cobra.Command, args []string) {
-			config, err := ParseConfig()
-			if err != nil {
-				logger.Error("Failed to load configuration", slog.String("error", err.Error()))
-				return
-			}
-
 			dbManager := NewDatabaseManager(logger)
 
 			pool, err := dbManager.Connect(config.DATABASE_URL)
@@ -86,7 +73,7 @@ func MigrateCommand(logger *slog.Logger) *cobra.Command {
 			}
 			defer pool.Close()
 
-			if err := handleMigrations(dbManager, true); err != nil {
+			if err := handleMigrations(logger, dbManager, true); err != nil {
 				logger.Error("Error while applying migrations", slog.String("error", err.Error()))
 			}
 		},
