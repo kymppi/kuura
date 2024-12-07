@@ -61,7 +61,12 @@ func ProvidePGXConfig(logger *slog.Logger, dsn string, config ...DatabaseConfig)
 	poolConfig.ConnConfig.ConnectTimeout = dbConfig.ConnectionTimeout
 
 	poolConfig.BeforeClose = func(c *pgx.Conn) {
-		logger.Info("Closing PostgreSQL connection pool")
+		logger.Debug("Closing PostgreSQL connection pool", slog.Uint64("conn_pid", uint64(c.PgConn().PID())))
+	}
+	poolConfig.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		logger.Debug("Opened PostgreSQL connection",
+			slog.Uint64("conn_pid", uint64(conn.PgConn().PID())))
+		return nil
 	}
 
 	return poolConfig

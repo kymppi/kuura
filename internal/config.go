@@ -9,6 +9,7 @@ type Config struct {
 	GO_ENV         string `env:"GO_ENV" envDefault:"production"`
 	DATABASE_URL   string `env:"DATABASE_URL" envDefault:""`
 	RUN_MIGRATIONS bool   `env:"RUN_MIGRATIONS" envDefault:"false"`
+	DEBUG          bool   `env:"DEBUG" envDefault:"false"`
 }
 
 func ParseConfig() (*Config, error) {

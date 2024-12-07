@@ -15,9 +15,6 @@ var (
 	// Info
 	GitSHA string
 	Branch string
-
-	// Global flags
-	debugMode bool
 )
 
 func main() {
@@ -35,7 +32,7 @@ func main() {
 	}
 
 	loggerConfig := kuura.LoggerConfig{
-		DebugEnabled:  debugMode,
+		DebugEnabled:  config.DEBUG,
 		PrettyEnabled: config.GO_ENV != "production",
 	}
 	loggerManager := kuura.NewLogger(loggerConfig)
@@ -48,13 +45,6 @@ func main() {
 		Run:     kuura.RootCommand(config, logger),
 		Version: formatVersion(GitSHA, Branch),
 	}
-
-	rootCmd.PersistentFlags().BoolVar(
-		&debugMode,
-		"debug",
-		false,
-		"enable debug logging",
-	)
 
 	rootCmd.AddCommand(kuura.MigrateCommand(logger, config))
 
