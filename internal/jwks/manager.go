@@ -14,18 +14,16 @@ import (
 )
 
 type JWKManager struct {
-	storage   KeyStorage
-	serviceId uuid.UUID
+	storage KeyStorage
 }
 
-func NewJWKManager(storage KeyStorage, serviceId uuid.UUID) *JWKManager {
+func NewJWKManager(storage KeyStorage) *JWKManager {
 	return &JWKManager{
-		storage:   storage,
-		serviceId: serviceId,
+		storage: storage,
 	}
 }
 
-func (m *JWKManager) CreateKey(ctx context.Context) (keyId string, err error) {
+func (m *JWKManager) CreateKey(ctx context.Context, serviceId uuid.UUID) (keyId string, err error) {
 	keyId = ulid.Make().String()
 
 	raw, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
@@ -59,7 +57,7 @@ func (m *JWKManager) CreateKey(ctx context.Context) (keyId string, err error) {
 		public:  publicKey.(jwk.ECDSAPublicKey),
 	}
 
-	err = m.storage.StoreKey(ctx, m.serviceId, fullJWK)
+	err = m.storage.StoreKey(ctx, serviceId, fullJWK)
 	if err != nil {
 		return "", fmt.Errorf("failed to store key: %w", err)
 	}
@@ -67,8 +65,8 @@ func (m *JWKManager) CreateKey(ctx context.Context) (keyId string, err error) {
 	return keyId, nil
 }
 
-func (m *JWKManager) GetJWKS(ctx context.Context) (jwk.Set, error) {
-	publicKeys, err := m.storage.GetPublicKeys(ctx, m.serviceId)
+func (m *JWKManager) GetJWKS(ctx context.Context, serviceId uuid.UUID) (jwk.Set, error) {
+	publicKeys, err := m.storage.GetPublicKeys(ctx, serviceId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve public keys: %w", err)
 	}
@@ -81,32 +79,32 @@ func (m *JWKManager) GetJWKS(ctx context.Context) (jwk.Set, error) {
 	return set, nil
 }
 
-func (m *JWKManager) Rotate(ctx context.Context) error {
-	_, err := m.CreateKey(ctx)
+func (m *JWKManager) Rotate(ctx context.Context, serviceId uuid.UUID) error {
+	_, err := m.CreateKey(ctx, serviceId)
 
 	if err != nil {
 		return fmt.Errorf("failed to create a new key: %w", err)
 	}
 
-	upcomingKeyId, err := m.storage.GetUpcomingKey(ctx, m.serviceId)
+	upcomingKeyId, err := m.storage.GetUpcomingKey(ctx, serviceId)
 
 	if err != nil {
 		return fmt.Errorf("failed to get upcoming key id: %w", err)
 	}
 
-	err = m.storage.SetCurrentKey(ctx, m.serviceId, upcomingKeyId)
+	err = m.storage.SetCurrentKey(ctx, serviceId, upcomingKeyId)
 
 	if err != nil {
 		return fmt.Errorf("failed to promote key: %w", err)
 	}
 
-	oldestRetiredKeyId, err := m.storage.GetOldestRetired(ctx, m.serviceId)
+	oldestRetiredKeyId, err := m.storage.GetOldestRetired(ctx, serviceId)
 
 	if err != nil {
 		return fmt.Errorf("failed to get oldest retired key: %w", err)
 	}
 
-	err = m.storage.DeleteKey(ctx, m.serviceId, oldestRetiredKeyId)
+	err = m.storage.DeleteKey(ctx, serviceId, oldestRetiredKeyId)
 
 	if err != nil {
 		return fmt.Errorf("failed to remove oldest retired key: %w", err)
@@ -115,8 +113,8 @@ func (m *JWKManager) Rotate(ctx context.Context) error {
 	return nil
 }
 
-func (m *JWKManager) Remove(ctx context.Context, id string) error {
-	currentKey, err := m.storage.GetCurrentPrivateKey(ctx, m.serviceId)
+func (m *JWKManager) Remove(ctx context.Context, serviceId uuid.UUID, id string) error {
+	currentKey, err := m.storage.GetCurrentPrivateKey(ctx, serviceId)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve current key: %w", err)
 	}
@@ -125,15 +123,15 @@ func (m *JWKManager) Remove(ctx context.Context, id string) error {
 		return errors.New("currently used key must not be removed")
 	}
 
-	if err := m.storage.DeleteKey(ctx, m.serviceId, id); err != nil {
+	if err := m.storage.DeleteKey(ctx, serviceId, id); err != nil {
 		return fmt.Errorf("failed to remove key: %w", err)
 	}
 
 	return nil
 }
 
-func (m *JWKManager) Export(ctx context.Context, id string) (jwk.Key, error) {
-	fullKey, err := m.storage.GetPrivate(ctx, m.serviceId, id)
+func (m *JWKManager) Export(ctx context.Context, serviceId uuid.UUID, id string) (jwk.Key, error) {
+	fullKey, err := m.storage.GetPrivate(ctx, serviceId, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve key: %w", err)
 	}
