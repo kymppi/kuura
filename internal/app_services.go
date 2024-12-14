@@ -1,4 +1,4 @@
-package services
+package kuura
 
 import (
 	"context"
@@ -77,6 +77,12 @@ func (m *ServiceManager) GetServices(ctx context.Context) ([]*models.AppService,
 	}
 
 	return result, nil
+}
+
+func (m *ServiceManager) DeleteService(ctx context.Context, id uuid.UUID) error {
+	err := m.db.DeleteAppService(ctx, utils.UUIDToPgType(id))
+
+	return handleError("DeleteService", err, &id)
 }
 
 func handleError(operation string, err error, id *uuid.UUID) error {

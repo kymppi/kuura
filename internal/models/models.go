@@ -7,10 +7,10 @@ import (
 )
 
 type AppService struct {
-	Id          uuid.UUID // uuidv7
-	JWTAudience string
-	CreatedAt   time.Time
-	ModifiedAt  time.Time
-	Name        string
-	Description string // optional
+	Id          uuid.UUID `json:"id" yaml:"id"` // uuidv7
+	JWTAudience string    `json:"jwt_audience" yaml:"jwt_audience"`
+	CreatedAt   time.Time `json:"created_at" yaml:"created_at"`
+	ModifiedAt  time.Time `json:"modified_at" yaml:"modified_at"`
+	Name        string    `json:"name" yaml:"name"`
+	Description string    `json:"description" yaml:"description"` // optional
 }

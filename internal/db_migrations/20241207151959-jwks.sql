@@ -1,5 +1,14 @@
 
 -- +migrate Up
+CREATE TABLE services (
+    id uuid PRIMARY KEY, -- uuidv7
+    jwt_audience text NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    name text NOT NULL,
+    description text
+);
+
 CREATE TABLE jwk_private (
     id text PRIMARY KEY,
     service_id uuid NOT NULL,
@@ -15,15 +24,6 @@ CREATE TABLE jwk_public_keys (
     key_data bytea NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
-);
-
-CREATE TABLE services (
-    id uuid PRIMARY KEY, -- uuidv7
-    jwt_audience text NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    name text NOT NULL,
-    description text
 );
 
 CREATE TABLE service_key_states (

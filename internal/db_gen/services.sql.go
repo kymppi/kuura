@@ -27,6 +27,16 @@ func (q *Queries) CreateAppService(ctx context.Context, arg CreateAppServicePara
 	return err
 }
 
+const deleteAppService = `-- name: DeleteAppService :exec
+DELETE FROM services
+WHERE id = $1
+`
+
+func (q *Queries) DeleteAppService(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAppService, id)
+	return err
+}
+
 const getAppService = `-- name: GetAppService :one
 SELECT id, jwt_audience, created_at, modified_at, name, description FROM services
 WHERE id = $1
