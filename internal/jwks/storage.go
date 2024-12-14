@@ -104,8 +104,8 @@ func (ks *PostgresQLKeyStorage) GetPublic(ctx context.Context, serviceId uuid.UU
 		return PublicJWK{}, handlePgError("GetPublic", err, id)
 	}
 
-	var publicKey jwk.ECDSAPublicKey
-	if err := json.Unmarshal(row.KeyData, &publicKey); err != nil {
+	publicKey, err := parsePublicKey(row.KeyData, id)
+	if err != nil {
 		return PublicJWK{}, fmt.Errorf("failed to deserialize public key: %w", err)
 	}
 
@@ -124,8 +124,8 @@ func (ks *PostgresQLKeyStorage) GetPublicKeys(ctx context.Context, serviceId uui
 
 	var publicKeys []PublicJWK
 	for _, row := range rows {
-		var publicKey jwk.ECDSAPublicKey
-		if err := json.Unmarshal(row.KeyData, &publicKey); err != nil {
+		publicKey, err := parsePublicKey(row.KeyData, row.ID)
+		if err != nil {
 			return nil, fmt.Errorf("failed to deserialize public key with ID %s: %w", row.ID, err)
 		}
 
@@ -154,13 +154,13 @@ func (ks *PostgresQLKeyStorage) GetPrivate(ctx context.Context, serviceId uuid.U
 		return FullJWK{}, fmt.Errorf("failed to decrypt private key: %w", err)
 	}
 
-	var privateKey jwk.ECDSAPrivateKey
-	if err := json.Unmarshal(decryptedPrivateKey, &privateKey); err != nil {
+	privateKey, err := parsePrivateKey(decryptedPrivateKey)
+	if err != nil {
 		return FullJWK{}, fmt.Errorf("failed to deserialize private key: %w", err)
 	}
 
-	var publicKey jwk.ECDSAPublicKey
-	if err := json.Unmarshal(row.PublicKeyData, &publicKey); err != nil {
+	publicKey, err := parsePublicKey(row.PublicKeyData, id)
+	if err != nil {
 		return FullJWK{}, fmt.Errorf("failed to deserialize public key: %w", err)
 	}
 
@@ -184,13 +184,13 @@ func (ks *PostgresQLKeyStorage) GetCurrentPrivateKey(ctx context.Context, servic
 		return FullJWK{}, fmt.Errorf("failed to decrypt private key: %w", err)
 	}
 
-	var privateKey jwk.ECDSAPrivateKey
-	if err := json.Unmarshal(decryptedPrivateKey, &privateKey); err != nil {
+	privateKey, err := parsePrivateKey(decryptedPrivateKey)
+	if err != nil {
 		return FullJWK{}, fmt.Errorf("failed to deserialize private key: %w", err)
 	}
 
-	var publicKey jwk.ECDSAPublicKey
-	if err := json.Unmarshal(row.PublicKeyData, &publicKey); err != nil {
+	publicKey, err := parsePublicKey(row.PublicKeyData, row.ID)
+	if err != nil {
 		return FullJWK{}, fmt.Errorf("failed to deserialize public key: %w", err)
 	}
 
@@ -287,4 +287,38 @@ func handlePgError(operation string, err error, id string) error {
 	}
 
 	return fmt.Errorf("%s: error with key ID %s: %w", operation, id, err)
+}
+
+func parsePublicKey(keyData []byte, id string) (jwk.ECDSAPublicKey, error) {
+	publicKey, err := jwk.ParseKey(keyData)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	ecPublicKey, ok := publicKey.(jwk.ECDSAPublicKey)
+
+	if !ok {
+		return nil, errors.New("public key is not ECDSA")
+	}
+
+	ecPublicKey.Set("kid", id)
+
+	return ecPublicKey, nil
+}
+
+func parsePrivateKey(keyData []byte) (jwk.ECDSAPrivateKey, error) {
+	privateKey, err := jwk.ParseKey(keyData)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	ecPublicKey, ok := privateKey.(jwk.ECDSAPrivateKey)
+
+	if !ok {
+		return nil, errors.New("private key is not ECDSA")
+	}
+
+	return ecPublicKey, nil
 }

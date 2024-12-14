@@ -38,6 +38,7 @@ func NewRootCommand(config *kuura.Config, logger *slog.Logger) *cobra.Command {
 	// Subcommands
 	rootCmd.AddCommand(runMigrate(logger, config))
 	rootCmd.AddCommand(runServices(logger, config))
+	rootCmd.AddCommand(runJwks(logger, config))
 
 	return rootCmd
 }

@@ -19,9 +19,10 @@ import (
 
 func runServices(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	servicesCmd := &cobra.Command{
-		Use:   "services",
-		Short: "Manage application services",
-		Long:  `Interact with and manage application services in the Kuura authentication system.`,
+		Use:     "services",
+		Aliases: []string{"service"},
+		Short:   "Manage application services",
+		Long:    `Interact with and manage application services in the Kuura authentication system.`,
 	}
 
 	servicesCmd.AddCommand(serviceList(logger, config))
@@ -75,7 +76,7 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 func serviceDelete(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete",
+		Use:   "delete [service id]",
 		Short: "Delete a service by ID",
 		Args:  cobra.ExactArgs(1), // serviceId
 		Run: func(cmd *cobra.Command, args []string) {

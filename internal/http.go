@@ -6,16 +6,21 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/kymppi/kuura/internal/jwks"
 	m "github.com/kymppi/kuura/internal/middleware"
 )
 
-func newHTTPServer(logger *slog.Logger, config *Config) *http.Server {
+func newHTTPServer(
+	logger *slog.Logger,
+	config *Config,
+	jwkManager *jwks.JWKManager,
+) *http.Server {
 	mux := http.NewServeMux()
 
 	addRoutes(
 		mux,
 		logger,
-		config,
+		jwkManager,
 	)
 
 	var handler http.Handler = mux

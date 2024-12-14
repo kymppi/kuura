@@ -41,6 +41,9 @@ func (m *JWKManager) CreateKey(ctx context.Context, serviceId uuid.UUID) (keyId 
 		return "", fmt.Errorf("expected jwk.ECDSAPrivateKey, got %T", privateKey)
 	}
 
+	privateKey.Set(jwk.KeyUsageKey, jwk.ForSignature.String())
+	privateKey.Set(jwk.AlgorithmKey, "ES384")
+
 	publicKey, err := privateKey.PublicKey()
 
 	if err != nil {
@@ -72,6 +75,7 @@ func (m *JWKManager) GetJWKS(ctx context.Context, serviceId uuid.UUID) (jwk.Set,
 	}
 
 	set := jwk.NewSet()
+
 	for _, publicKey := range publicKeys {
 		set.AddKey(publicKey.public)
 	}

@@ -10,3 +10,59 @@ paths:
       responses:
         '200':
           description: OK
+  /{serviceId}/jwks.json:
+    get:
+      summary: Retrieve the JSON Web Key Set for a specific service
+      description: This endpoint returns the public keys in JWKS format for the specified serviceId, which can be used to verify JWTs signed by the service.
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          description: The ID of the service for which the JWKS is being requested.
+          schema:
+            type: string
+            example: 0193c6dd-d680-7011-91c6-6b8a280eaf25
+      responses:
+        '200':
+          description: A JWKS document containing public keys for the service
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    description: The list of JSON Web Keys
+                    items:
+                      type: object
+                      properties:
+                        kty:
+                          type: string
+                          description: Key type (e.g., EC for ECDSA)
+                        use:
+                          type: string
+                          description: Key use (e.g., sig for signing)
+                        kid:
+                          type: string
+                          description: Key ID
+                        alg:
+                          type: string
+                          description: Algorithm used (e.g., ES384)
+                        crv:
+                          type: string
+                          description: Elliptic curve (e.g., P-384)
+                        x:
+                          type: string
+                          description: X coordinate of the public key (base64url encoded)
+                        y:
+                          type: string
+                          description: Y coordinate of the public key (base64url encoded)
+              example:
+                keys:
+                  - kty: EC
+                    use: sig
+                    kid: '12345'
+                    alg: ES384
+                    crv: P-384
+                    x: 'public-x-coordinate-in-base64url'
+                    y: 'public-y-coordinate-in-base64url'

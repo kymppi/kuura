@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/kymppi/kuura/internal/db_gen"
+	"github.com/kymppi/kuura/internal/jwks"
 )
 
 // setup db, check migration status
@@ -28,4 +30,24 @@ func InitializeDatabaseConnection(ctx context.Context, logger *slog.Logger, conf
 	}
 
 	return db_gen.New(pool), cleanup, nil
+}
+
+func InitializeJWKManager(ctx context.Context, logger *slog.Logger, config *Config, queries *db_gen.Queries) (*jwks.JWKManager, error) {
+	encryptionKey, err := loadEncryptionKey(config.JWK_KEK_PATH)
+	if err != nil {
+		logger.Error("Failed to load encryption key", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	storage := jwks.NewPostgresQLKeyStorage(queries, encryptionKey)
+
+	return jwks.NewJWKManager(storage), nil
+}
+
+func loadEncryptionKey(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read encryption key file: %w", err)
+	}
+	return data, nil
 }
