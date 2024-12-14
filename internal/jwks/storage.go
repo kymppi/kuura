@@ -149,7 +149,7 @@ func (ks *PostgresQLKeyStorage) GetPrivate(ctx context.Context, serviceId uuid.U
 		return FullJWK{}, handlePgError("GetPrivate", err, id)
 	}
 
-	decryptedPrivateKey, err := ks.encryptor.Decrypt(row.EncryptedKeyData, row.Nonce, ks.encryptionKey)
+	decryptedPrivateKey, err := ks.encryptor.Decrypt(row.EncryptedKeyData, ks.encryptionKey, row.Nonce)
 	if err != nil {
 		return FullJWK{}, fmt.Errorf("failed to decrypt private key: %w", err)
 	}
@@ -179,7 +179,7 @@ func (ks *PostgresQLKeyStorage) GetCurrentPrivateKey(ctx context.Context, servic
 		return FullJWK{}, handlePgError("GetCurrentPrivate", err, serviceId.String())
 	}
 
-	decryptedPrivateKey, err := ks.encryptor.Decrypt(row.EncryptedKeyData, row.Nonce, ks.encryptionKey)
+	decryptedPrivateKey, err := ks.encryptor.Decrypt(row.EncryptedKeyData, ks.encryptionKey, row.Nonce)
 	if err != nil {
 		return FullJWK{}, fmt.Errorf("failed to decrypt private key: %w", err)
 	}
