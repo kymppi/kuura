@@ -8,7 +8,7 @@ import (
 	"github.com/kymppi/kuura/internal/db_migrations"
 )
 
-func handleMigrations(logger *slog.Logger, dbManager *DatabaseManager, run bool) error {
+func HandleMigrations(logger *slog.Logger, dbManager *DatabaseManager, run bool) error {
 	migrationSource := db_migrations.Migrations
 	needsMigration, err := dbManager.CheckMigrations(migrationSource)
 
