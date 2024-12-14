@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -26,6 +27,12 @@ func NewRootCommand(config *kuura.Config, logger *slog.Logger) *cobra.Command {
 		Long:    `Kuura is an authentication server with great M2M support.`,
 		Run:     runRoot(config, logger),
 		Version: utils.FormatVersion(GitSHA, Branch),
+	}
+
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if cmd.Parent() != nil {
+			*logger = *slog.New(slog.NewJSONHandler(io.Discard, nil))
+		}
 	}
 
 	// Subcommands

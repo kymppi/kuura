@@ -188,10 +188,10 @@ func outputServicesYAML(services []*models.AppService, w io.Writer) error {
 
 func outputServicesRich(services []*models.AppService, w io.Writer) {
 	for _, service := range services {
-		fmt.Fprintf(w, "  Service: %s\n", service.Name)
-		fmt.Fprintf(w, "  ID:          %s\n", service.Id)
-		fmt.Fprintf(w, "  Audience:    %s\n", service.JWTAudience)
-		fmt.Fprintf(w, "  Description: %s\n", service.Description)
-		fmt.Fprintf(w, "  Created:     %s\n\n", service.CreatedAt.Format(time.RFC3339))
+		fmt.Fprintf(w, "Service: %s\n", service.Name)
+		fmt.Fprintf(w, "ID:          %s\n", service.Id)
+		fmt.Fprintf(w, "Audience:    %s\n", service.JWTAudience)
+		fmt.Fprintf(w, "Description: %s\n", service.Description)
+		fmt.Fprintf(w, "Created:     %s\n\n", service.CreatedAt.Format(time.RFC3339))
 	}
 }
