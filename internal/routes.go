@@ -8,11 +8,24 @@ import (
 	"github.com/kymppi/kuura/internal/jwks"
 )
 
-func addRoutes(
+func addMainRoutes(
 	mux *http.ServeMux,
 	logger *slog.Logger,
 	jwkManager *jwks.JWKManager,
 ) {
 	mux.Handle("/", http.NotFoundHandler())
 	mux.Handle("GET /v1/{serviceId}/jwks.json", endpoints.V1JwksHandler(logger, jwkManager))
+
+	// authenticated management endpoints
+}
+
+func addManagementRoutes(
+	mux *http.ServeMux,
+	logger *slog.Logger,
+	jwkManager *jwks.JWKManager,
+) {
+	mux.Handle("/", http.NotFoundHandler())
+	mux.Handle("GET /v1/{serviceId}/jwks.json", endpoints.V1JwksHandler(logger, jwkManager))
+
+	// unauthenticated management endpoints
 }

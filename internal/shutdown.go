@@ -10,22 +10,39 @@ import (
 
 func waitForShutdown(
 	ctx context.Context,
-	server *http.Server,
+	servers []*http.Server,
 	logger *slog.Logger,
 	errChan <-chan error,
 ) error {
-	combinedErrChan := make(chan error, 1)
+	combinedErrChan := make(chan error, len(servers)+1) // Buffer for all servers + ctx.Done()
 
+	// context cancellation
 	go func() {
-		select {
-		case <-ctx.Done():
-			combinedErrChan <- performGracefulShutdown(ctx, server, logger)
-		case err := <-errChan:
-			combinedErrChan <- err
+		<-ctx.Done()
+		for _, server := range servers {
+			if err := performGracefulShutdown(ctx, server, logger); err != nil {
+				combinedErrChan <- err
+			}
 		}
+		close(combinedErrChan)
 	}()
 
-	return <-combinedErrChan
+	// errors from all servers
+	go func() {
+		for err := range errChan {
+			combinedErrChan <- err
+		}
+		close(combinedErrChan)
+	}()
+
+	// 1st occurred error
+	for err := range combinedErrChan {
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func performGracefulShutdown(

@@ -3,6 +3,7 @@ package kuura
 import (
 	"context"
 	"log/slog"
+	"net/http"
 )
 
 func RunServer(ctx context.Context, logger *slog.Logger, config *Config) error {
@@ -17,8 +18,13 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config) error {
 		return err
 	}
 
-	server := newHTTPServer(logger, config, jwkManager)
-	errChan := make(chan error, 1)
-	go startHTTPServer(server, logger, errChan)
-	return waitForShutdown(ctx, server, logger, errChan)
+	mainServer := newHTTPServer(logger, config, jwkManager)
+	managementServer := newManagementServer(logger, config, jwkManager)
+
+	errChan := make(chan error, 2)
+
+	go startHTTPServer(mainServer, logger, errChan, "main")
+	go startHTTPServer(managementServer, logger, errChan, "management")
+
+	return waitForShutdown(ctx, []*http.Server{mainServer, managementServer}, logger, errChan)
 }
