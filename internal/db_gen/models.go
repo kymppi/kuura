@@ -25,6 +25,21 @@ type JwkPublicKey struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type M2mSession struct {
+	ID                  string             `json:"id"`
+	SubjectID           string             `json:"subject_id"`
+	RefreshToken        string             `json:"refresh_token"`
+	Roles               []string           `json:"roles"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	LastAuthenticatedAt pgtype.Timestamptz `json:"last_authenticated_at"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+}
+
+type M2mSessionTemplate struct {
+	ID    string   `json:"id"`
+	Roles []string `json:"roles"`
+}
+
 type Service struct {
 	ID          pgtype.UUID        `json:"id"`
 	JwtAudience string             `json:"jwt_audience"`

@@ -27,7 +27,7 @@ func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudi
 	id, err := uuid.NewV7()
 
 	if err != nil {
-		return nil, handleError("CreateService", err, nil)
+		return nil, handleAppServiceError("CreateService", err, nil)
 	}
 
 	err = m.db.CreateAppService(ctx, db_gen.CreateAppServiceParams{
@@ -37,7 +37,7 @@ func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudi
 	})
 
 	if err != nil {
-		return nil, handleError("CreateService", err, &id)
+		return nil, handleAppServiceError("CreateService", err, &id)
 	}
 
 	return &id, nil
@@ -46,7 +46,7 @@ func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudi
 func (m *ServiceManager) GetService(ctx context.Context, id uuid.UUID) (*models.AppService, error) {
 	data, err := m.db.GetAppService(ctx, utils.UUIDToPgType(id))
 	if err != nil {
-		return nil, handleError("GetService", err, &id)
+		return nil, handleAppServiceError("GetService", err, &id)
 	}
 	return &models.AppService{
 		Id:          id,
@@ -61,7 +61,7 @@ func (m *ServiceManager) GetService(ctx context.Context, id uuid.UUID) (*models.
 func (m *ServiceManager) GetServices(ctx context.Context) ([]*models.AppService, error) {
 	data, err := m.db.GetAppServices(ctx)
 	if err != nil {
-		return nil, handleError("GetServices", err, nil)
+		return nil, handleAppServiceError("GetServices", err, nil)
 	}
 
 	var result []*models.AppService
@@ -82,10 +82,10 @@ func (m *ServiceManager) GetServices(ctx context.Context) ([]*models.AppService,
 func (m *ServiceManager) DeleteService(ctx context.Context, id uuid.UUID) error {
 	err := m.db.DeleteAppService(ctx, utils.UUIDToPgType(id))
 
-	return handleError("DeleteService", err, &id)
+	return handleAppServiceError("DeleteService", err, &id)
 }
 
-func handleError(operation string, err error, id *uuid.UUID) error {
+func handleAppServiceError(operation string, err error, id *uuid.UUID) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		baseMsg := operation

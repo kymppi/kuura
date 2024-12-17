@@ -14,3 +14,8 @@ type AppService struct {
 	Name        string    `json:"name" yaml:"name"`
 	Description string    `json:"description" yaml:"description"` // optional
 }
+
+type M2MRoleTemplate struct {
+	Id    string   `json:"id" yaml:"id"`
+	Roles []string `json:"roles" yaml:"roles"`
+}
