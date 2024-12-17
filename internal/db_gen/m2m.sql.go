@@ -7,6 +7,8 @@ package db_gen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createM2MRoleTemplate = `-- name: CreateM2MRoleTemplate :exec
@@ -21,6 +23,43 @@ type CreateM2MRoleTemplateParams struct {
 
 func (q *Queries) CreateM2MRoleTemplate(ctx context.Context, arg CreateM2MRoleTemplateParams) error {
 	_, err := q.db.Exec(ctx, createM2MRoleTemplate, arg.ID, arg.Roles)
+	return err
+}
+
+const createM2MSession = `-- name: CreateM2MSession :exec
+INSERT INTO m2m_sessions (
+    id,
+    subject_id,
+    refresh_token,
+    roles,
+    expires_at
+)
+SELECT 
+    $1 AS id,
+    $2 AS subject_id,
+    $3 AS refresh_token, -- hashed
+    t.roles AS roles,
+    $4 AS expires_at
+FROM m2m_session_templates t
+WHERE t.id = $5
+`
+
+type CreateM2MSessionParams struct {
+	ID           string             `json:"id"`
+	SubjectID    string             `json:"subject_id"`
+	RefreshToken string             `json:"refresh_token"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+	ID_2         string             `json:"id_2"`
+}
+
+func (q *Queries) CreateM2MSession(ctx context.Context, arg CreateM2MSessionParams) error {
+	_, err := q.db.Exec(ctx, createM2MSession,
+		arg.ID,
+		arg.SubjectID,
+		arg.RefreshToken,
+		arg.ExpiresAt,
+		arg.ID_2,
+	)
 	return err
 }
 

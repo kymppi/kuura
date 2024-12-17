@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	kuura "github.com/kymppi/kuura/internal"
+	"github.com/kymppi/kuura/internal/m2m"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,7 @@ func m2mRoleTemplateCreate(logger *slog.Logger, config *kuura.Config) *cobra.Com
 			}
 			defer cleanup()
 
-			m2mService := kuura.NewM2MService(queries)
+			m2mService := m2m.NewM2MService(queries)
 
 			if err := m2mService.CreateRoleTemplate(ctx, templateId, roles); err != nil {
 				cmd.PrintErrf("Failed to create role template: %s", err)
@@ -65,7 +66,7 @@ func m2mRoleTemplateList(logger *slog.Logger, config *kuura.Config) *cobra.Comma
 			}
 			defer cleanup()
 
-			m2mService := kuura.NewM2MService(queries)
+			m2mService := m2m.NewM2MService(queries)
 
 			templates, err := m2mService.GetRoleTemplates(ctx)
 			if err != nil {

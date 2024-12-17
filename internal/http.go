@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/kymppi/kuura/internal/jwks"
+	"github.com/kymppi/kuura/internal/m2m"
 	m "github.com/kymppi/kuura/internal/middleware"
 )
 
@@ -40,6 +41,7 @@ func newManagementServer(
 	logger *slog.Logger,
 	config *Config,
 	jwkManager *jwks.JWKManager,
+	m2mService *m2m.M2MService,
 ) *http.Server {
 	mux := http.NewServeMux()
 
@@ -49,6 +51,7 @@ func newManagementServer(
 		mux,
 		serverLogger,
 		jwkManager,
+		m2mService,
 	)
 
 	var handler http.Handler = mux

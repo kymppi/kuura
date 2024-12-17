@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+
+	"github.com/kymppi/kuura/internal/m2m"
 )
 
 func RunServer(ctx context.Context, logger *slog.Logger, config *Config) error {
@@ -18,8 +20,10 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config) error {
 		return err
 	}
 
+	m2mService := m2m.NewM2MService(queries)
+
 	mainServer := newHTTPServer(logger, config, jwkManager)
-	managementServer := newManagementServer(logger, config, jwkManager)
+	managementServer := newManagementServer(logger, config, jwkManager, m2mService)
 
 	errChan := make(chan error, 2)
 
