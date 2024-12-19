@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -144,12 +145,37 @@ func (m *JWKManager) Export(ctx context.Context, serviceId uuid.UUID, id string)
 
 func (m *JWKManager) GetSigningKey(ctx context.Context, serviceId uuid.UUID) (jwk.Key, error) {
 	key, err := m.storage.GetCurrentPrivateKey(ctx, serviceId)
+	if err == nil {
+		return key.private, nil
+	}
 
+	if !strings.Contains(err.Error(), "not found") {
+		return nil, err
+	}
+
+	if err := m.promoteUpcomingKey(ctx, serviceId); err != nil {
+		return nil, fmt.Errorf("failed to promote upcoming key: %w", err)
+	}
+
+	key, err = m.storage.GetCurrentPrivateKey(ctx, serviceId)
 	if err != nil {
 		return nil, err
 	}
 
 	return key.private, nil
+}
+
+func (m *JWKManager) promoteUpcomingKey(ctx context.Context, serviceId uuid.UUID) error {
+	upcomingKey, err := m.storage.GetUpcomingKey(ctx, serviceId)
+	if err != nil {
+		return fmt.Errorf("failed to get upcoming key: %w", err)
+	}
+
+	if err := m.storage.SetCurrentKey(ctx, serviceId, upcomingKey); err != nil {
+		return fmt.Errorf("failed to set current key: %w", err)
+	}
+
+	return nil
 }
 
 func (m *JWKManager) KeyStatus(ctx context.Context, serviceId uuid.UUID) (map[string]string, error) {
