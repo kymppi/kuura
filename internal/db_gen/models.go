@@ -33,6 +33,7 @@ type M2mSession struct {
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	LastAuthenticatedAt pgtype.Timestamptz `json:"last_authenticated_at"`
 	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	ServiceID           pgtype.UUID        `json:"service_id"`
 }
 
 type M2mSessionTemplate struct {

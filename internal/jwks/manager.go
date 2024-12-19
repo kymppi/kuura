@@ -141,3 +141,13 @@ func (m *JWKManager) Export(ctx context.Context, serviceId uuid.UUID, id string)
 	}
 	return fullKey.private, nil
 }
+
+func (m *JWKManager) GetSigningKey(ctx context.Context, serviceId uuid.UUID) (jwk.Key, error) {
+	key, err := m.storage.GetCurrentPrivateKey(ctx, serviceId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return key.private, nil
+}

@@ -7,6 +7,7 @@ package db_gen
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -32,16 +33,18 @@ INSERT INTO m2m_sessions (
     subject_id,
     refresh_token,
     roles,
-    expires_at
+    expires_at,
+    service_id
 )
 SELECT 
     $1 AS id,
     $2 AS subject_id,
     $3 AS refresh_token, -- hashed
     t.roles AS roles,
-    $4 AS expires_at
+    $4 AS expires_at,
+    $5 as service_id
 FROM m2m_session_templates t
-WHERE t.id = $5
+WHERE t.id = $6
 `
 
 type CreateM2MSessionParams struct {
@@ -49,6 +52,7 @@ type CreateM2MSessionParams struct {
 	SubjectID    string             `json:"subject_id"`
 	RefreshToken string             `json:"refresh_token"`
 	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+	ServiceID    pgtype.UUID        `json:"service_id"`
 	ID_2         string             `json:"id_2"`
 }
 
@@ -58,6 +62,7 @@ func (q *Queries) CreateM2MSession(ctx context.Context, arg CreateM2MSessionPara
 		arg.SubjectID,
 		arg.RefreshToken,
 		arg.ExpiresAt,
+		arg.ServiceID,
 		arg.ID_2,
 	)
 	return err
@@ -85,4 +90,88 @@ func (q *Queries) GetM2MRoleTemplates(ctx context.Context) ([]M2mSessionTemplate
 		return nil, err
 	}
 	return items, nil
+}
+
+const getM2MSessionAndService = `-- name: GetM2MSessionAndService :one
+SELECT 
+    m.id,
+    m.subject_id,
+    m.refresh_token,
+    m.roles,
+    m.created_at,
+    m.last_authenticated_at,
+    m.expires_at,
+    m.service_id,
+    s.name as service_name,
+    s.description as service_description,
+    s.jwt_audience as service_jwt_audience,
+    s.modified_at as service_modified_at,
+    s.created_at as service_created_at
+FROM m2m_sessions m
+JOIN services s ON s.id = m.service_id
+WHERE m.id = $1
+`
+
+type GetM2MSessionAndServiceRow struct {
+	ID                  string             `json:"id"`
+	SubjectID           string             `json:"subject_id"`
+	RefreshToken        string             `json:"refresh_token"`
+	Roles               []string           `json:"roles"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	LastAuthenticatedAt pgtype.Timestamptz `json:"last_authenticated_at"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	ServiceID           pgtype.UUID        `json:"service_id"`
+	ServiceName         string             `json:"service_name"`
+	ServiceDescription  pgtype.Text        `json:"service_description"`
+	ServiceJwtAudience  string             `json:"service_jwt_audience"`
+	ServiceModifiedAt   time.Time          `json:"service_modified_at"`
+	ServiceCreatedAt    pgtype.Timestamptz `json:"service_created_at"`
+}
+
+func (q *Queries) GetM2MSessionAndService(ctx context.Context, id string) (GetM2MSessionAndServiceRow, error) {
+	row := q.db.QueryRow(ctx, getM2MSessionAndService, id)
+	var i GetM2MSessionAndServiceRow
+	err := row.Scan(
+		&i.ID,
+		&i.SubjectID,
+		&i.RefreshToken,
+		&i.Roles,
+		&i.CreatedAt,
+		&i.LastAuthenticatedAt,
+		&i.ExpiresAt,
+		&i.ServiceID,
+		&i.ServiceName,
+		&i.ServiceDescription,
+		&i.ServiceJwtAudience,
+		&i.ServiceModifiedAt,
+		&i.ServiceCreatedAt,
+	)
+	return i, err
+}
+
+const rotateM2MSessionRefreshToken = `-- name: RotateM2MSessionRefreshToken :exec
+UPDATE m2m_sessions
+SET refresh_token = $1
+WHERE id = $2
+`
+
+type RotateM2MSessionRefreshTokenParams struct {
+	RefreshToken string `json:"refresh_token"`
+	ID           string `json:"id"`
+}
+
+func (q *Queries) RotateM2MSessionRefreshToken(ctx context.Context, arg RotateM2MSessionRefreshTokenParams) error {
+	_, err := q.db.Exec(ctx, rotateM2MSessionRefreshToken, arg.RefreshToken, arg.ID)
+	return err
+}
+
+const updateM2MSessionLastAuthenticatedAt = `-- name: UpdateM2MSessionLastAuthenticatedAt :exec
+UPDATE m2m_sessions 
+SET last_authenticated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) UpdateM2MSessionLastAuthenticatedAt(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, updateM2MSessionLastAuthenticatedAt, id)
+	return err
 }

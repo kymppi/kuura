@@ -7,7 +7,8 @@ CREATE TABLE m2m_sessions (
     roles text[],
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_authenticated_at TIMESTAMP WITH TIME ZONE,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    service_id uuid NOT NULL REFERENCES services(id)
 );
 
 ALTER TABLE m2m_sessions 

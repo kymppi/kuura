@@ -13,6 +13,7 @@ type Config struct {
 	DEBUG             bool   `env:"DEBUG" envDefault:"false"`
 
 	JWK_KEK_PATH string `env:"JWK_KEK_PATH" envDefault:"/var/kuura/.kek"`
+	JWT_ISSUER   string `env:"JWT_ISSUER" envDefault:"kuura.midka.dev"`
 }
 
 func ParseConfig() (*Config, error) {

@@ -40,7 +40,13 @@ func m2mRoleTemplateCreate(logger *slog.Logger, config *kuura.Config) *cobra.Com
 			}
 			defer cleanup()
 
-			m2mService := m2m.NewM2MService(queries)
+			jwkManager, err := kuura.InitializeJWKManager(ctx, logger, config, queries)
+			if err != nil {
+				cmd.PrintErrf("Failed to initialize jwk manager: %s", err)
+				return
+			}
+
+			m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
 
 			if err := m2mService.CreateRoleTemplate(ctx, templateId, roles); err != nil {
 				cmd.PrintErrf("Failed to create role template: %s", err)
@@ -66,7 +72,13 @@ func m2mRoleTemplateList(logger *slog.Logger, config *kuura.Config) *cobra.Comma
 			}
 			defer cleanup()
 
-			m2mService := m2m.NewM2MService(queries)
+			jwkManager, err := kuura.InitializeJWKManager(ctx, logger, config, queries)
+			if err != nil {
+				cmd.PrintErrf("Failed to initialize jwk manager: %s", err)
+				return
+			}
+
+			m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
 
 			templates, err := m2mService.GetRoleTemplates(ctx)
 			if err != nil {

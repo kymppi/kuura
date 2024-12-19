@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/kymppi/kuura/internal/m2m"
 )
 
 type v1CreateM2MSessionRequest struct {
 	SubjectId string `json:"subject_id"`
 	Template  string `json:"template"`
+	ServiceId string `json:"service_id"`
 }
 
 func (r *v1CreateM2MSessionRequest) Valid(ctx context.Context) (problems map[string]string) {
@@ -23,6 +25,13 @@ func (r *v1CreateM2MSessionRequest) Valid(ctx context.Context) (problems map[str
 	}
 	if r.Template == "" {
 		problems["template"] = "'template' cannot be empty"
+	}
+	if r.ServiceId == "" {
+		problems["service_id"] = "'service_id' cannot be empty"
+	} else {
+		if _, err := uuid.Parse(r.ServiceId); err != nil {
+			problems["service_id"] = "'service_id' must be a valid UUID"
+		}
 	}
 
 	return problems
@@ -52,7 +61,7 @@ func V1CreateM2MSession(logger *slog.Logger, m2mService *m2m.M2MService) http.Ha
 			return
 		}
 
-		sessionId, initialToken, err := m2mService.CreateSession(r.Context(), data.SubjectId, data.Template)
+		sessionId, initialToken, err := m2mService.CreateSession(r.Context(), uuid.MustParse(data.ServiceId), data.SubjectId, data.Template)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("failed to create session: %v", err), http.StatusInternalServerError)
 			return
