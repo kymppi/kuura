@@ -134,3 +134,7 @@ WHERE
     AND sks.status = 'retired'
 ORDER BY p.created_at ASC
 LIMIT 1;
+
+-- name: GetKeyStatus :many
+SELECT status, jwk_private_id FROM service_key_states
+WHERE service_id = $1;

@@ -191,6 +191,36 @@ func (q *Queries) GetJWKPublic(ctx context.Context, arg GetJWKPublicParams) (Jwk
 	return i, err
 }
 
+const getKeyStatus = `-- name: GetKeyStatus :many
+SELECT status, jwk_private_id FROM service_key_states
+WHERE service_id = $1
+`
+
+type GetKeyStatusRow struct {
+	Status       string `json:"status"`
+	JwkPrivateID string `json:"jwk_private_id"`
+}
+
+func (q *Queries) GetKeyStatus(ctx context.Context, serviceID pgtype.UUID) ([]GetKeyStatusRow, error) {
+	rows, err := q.db.Query(ctx, getKeyStatus, serviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetKeyStatusRow{}
+	for rows.Next() {
+		var i GetKeyStatusRow
+		if err := rows.Scan(&i.Status, &i.JwkPrivateID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOldestRetiredKey = `-- name: GetOldestRetiredKey :one
 SELECT 
     p.id

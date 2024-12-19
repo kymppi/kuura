@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sort"
 
 	"github.com/google/uuid"
 	kuura "github.com/kymppi/kuura/internal"
@@ -23,6 +24,7 @@ func runJwks(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 	jwksCmd.AddCommand(jwkCreate(logger, config))
 	jwksCmd.AddCommand(jwkExport(logger, config))
+	jwksCmd.AddCommand(jwkStatus(logger, config))
 
 	return jwksCmd
 }
@@ -129,4 +131,66 @@ func exportECDSAPrivateKeyToStdout(privateKey *ecdsa.PrivateKey) error {
 	}
 
 	return nil
+}
+
+func jwkStatus(logger *slog.Logger, config *kuura.Config) *cobra.Command {
+	return &cobra.Command{
+		Use:   "status [service-id]",
+		Short: "View the key order, which key is currently used and which one is next.",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ctx := context.Background()
+
+			serviceId, err := uuid.Parse(args[0])
+			if err != nil {
+				cmd.PrintErrf("Failed to parse serviceId: %s", err)
+				return
+			}
+
+			queries, cleanup, err := kuura.InitializeDatabaseConnection(ctx, logger, config)
+			if err != nil {
+				cmd.PrintErrf("Failed to initialize database: %s", err)
+				return
+			}
+			defer cleanup()
+
+			jwkManager, err := kuura.InitializeJWKManager(ctx, logger, config, queries)
+			if err != nil {
+				cmd.PrintErrf("Failed to initialize jwk manager: %s", err)
+				return
+			}
+
+			keyStatuses, err := jwkManager.KeyStatus(ctx, serviceId)
+			if err != nil {
+				cmd.PrintErrf("Failed to get current key status: %s", err)
+				return
+			}
+
+			sortedKeys := make([]string, 0, len(keyStatuses))
+			keyOrder := map[string]int{"future": 0, "current": 1, "retired": 2}
+
+			keySlice := make([]struct {
+				ID     string
+				Status string
+			}, 0, len(keyStatuses))
+			for keyID, status := range keyStatuses {
+				keySlice = append(keySlice, struct {
+					ID     string
+					Status string
+				}{keyID, status})
+			}
+
+			sort.Slice(keySlice, func(i, j int) bool {
+				return keyOrder[keySlice[i].Status] < keyOrder[keySlice[j].Status]
+			})
+
+			for _, key := range keySlice {
+				sortedKeys = append(sortedKeys, key.ID)
+			}
+
+			for _, keyID := range sortedKeys {
+				fmt.Printf("- %s (%s)\n", keyID, keyStatuses[keyID])
+			}
+		},
+	}
 }

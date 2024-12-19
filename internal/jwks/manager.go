@@ -151,3 +151,7 @@ func (m *JWKManager) GetSigningKey(ctx context.Context, serviceId uuid.UUID) (jw
 
 	return key.private, nil
 }
+
+func (m *JWKManager) KeyStatus(ctx context.Context, serviceId uuid.UUID) (map[string]string, error) {
+	return m.storage.GetKeyStates(ctx, serviceId)
+}

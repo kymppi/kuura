@@ -39,6 +39,7 @@ type KeyStorage interface {
 	SetCurrentKey(ctx context.Context, serviceId uuid.UUID, nextKey string) error
 	GetUpcomingKey(ctx context.Context, serviceId uuid.UUID) (id string, err error)
 	GetOldestRetired(ctx context.Context, serviceId uuid.UUID) (id string, err error)
+	GetKeyStates(ctx context.Context, serviceId uuid.UUID) (map[string]string, error)
 }
 
 type PostgresQLKeyStorage struct {
@@ -269,6 +270,21 @@ func (ks *PostgresQLKeyStorage) GetOldestRetired(ctx context.Context, serviceId 
 	}
 
 	return id, nil
+}
+
+func (ks *PostgresQLKeyStorage) GetKeyStates(ctx context.Context, serviceId uuid.UUID) (map[string]string, error) {
+	data, err := ks.db.GetKeyStatus(ctx, utils.UUIDToPgType(serviceId))
+
+	if err != nil {
+		return nil, handlePgError("GetKeyStates", err, "")
+	}
+
+	statusMap := make(map[string]string, len(data))
+	for _, row := range data {
+		statusMap[row.JwkPrivateID] = row.Status
+	}
+
+	return statusMap, nil
 }
 
 func handlePgError(operation string, err error, id string) error {
