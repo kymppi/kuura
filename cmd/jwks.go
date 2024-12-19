@@ -70,7 +70,7 @@ func jwkCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 func jwkExport(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "export [service-id] [key-id]",
-		Short: "Export the ECDSA private key for a service",
+		Short: "Export a private key in PKCS #8",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx := context.Background()
@@ -107,7 +107,7 @@ func jwkExport(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 				return
 			}
 
-			err = exportECDSAPrivateKeyToStdout(&privateKey)
+			err = exportPKCS8PrivateKeyToStdout(&privateKey)
 			if err != nil {
 				cmd.PrintErrf("Failed to export private key to PEM: %v", err)
 				return
@@ -116,14 +116,14 @@ func jwkExport(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	}
 }
 
-func exportECDSAPrivateKeyToStdout(privateKey *ecdsa.PrivateKey) error {
-	privBytes, err := x509.MarshalECPrivateKey(privateKey)
+func exportPKCS8PrivateKeyToStdout(privateKey *ecdsa.PrivateKey) error {
+	privBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
-		return fmt.Errorf("failed to marshal private key: %v", err)
+		return fmt.Errorf("failed to marshal private key into PKCS#8 format: %v", err)
 	}
 
 	err = pem.Encode(os.Stdout, &pem.Block{
-		Type:  "EC PRIVATE KEY",
+		Type:  "PRIVATE KEY",
 		Bytes: privBytes,
 	})
 	if err != nil {
