@@ -224,29 +224,31 @@ func (ks *PostgresQLKeyStorage) DeleteKey(ctx context.Context, serviceId uuid.UU
 }
 
 func (ks *PostgresQLKeyStorage) SetCurrentKey(ctx context.Context, serviceId uuid.UUID, nextKey string) error {
-	currentKey, err := ks.GetCurrentPrivateKey(ctx, serviceId)
+	var currentKeyID string
 
+	currentKey, err := ks.GetCurrentPrivateKey(ctx, serviceId)
 	if err != nil {
-		return fmt.Errorf("failed to get current key: %w", err)
+		currentKeyID = ""
+	} else {
+		currentKeyID = currentKey.id
 	}
 
-	// temporarily 2 current keys so the server can sign with something
 	err = ks.db.SetJWKStatusToCurrent(ctx, db_gen.SetJWKStatusToCurrentParams{
 		ServiceID:    utils.UUIDToPgType(serviceId),
 		JwkPrivateID: nextKey,
 	})
-
 	if err != nil {
 		return handlePgError("SetCurrentKey", err, nextKey)
 	}
 
-	err = ks.db.SetJWKStatusToRetired(ctx, db_gen.SetJWKStatusToRetiredParams{
-		ServiceID:    utils.UUIDToPgType(serviceId),
-		JwkPrivateID: currentKey.id,
-	})
-
-	if err != nil {
-		return handlePgError("SetCurrentKeyRetired", err, currentKey.id)
+	if currentKeyID != "" {
+		err = ks.db.SetJWKStatusToRetired(ctx, db_gen.SetJWKStatusToRetiredParams{
+			ServiceID:    utils.UUIDToPgType(serviceId),
+			JwkPrivateID: currentKeyID,
+		})
+		if err != nil {
+			return handlePgError("SetCurrentKeyRetired", err, currentKeyID)
+		}
 	}
 
 	return nil

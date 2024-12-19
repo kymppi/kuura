@@ -22,7 +22,7 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config) error {
 
 	m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
 
-	mainServer := newHTTPServer(logger, config, jwkManager)
+	mainServer := newHTTPServer(logger, config, jwkManager, m2mService)
 	managementServer := newManagementServer(logger, config, jwkManager, m2mService)
 
 	errChan := make(chan error, 2)

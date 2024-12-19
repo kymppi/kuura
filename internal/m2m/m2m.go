@@ -128,6 +128,7 @@ func (s *M2MService) CreateAccessToken(ctx context.Context, sessionId string, re
 		Subject(subjectId).
 		IssuedAt(time.Now()).
 		Expiration(exp).
+		Claim("session_id", sessionId).
 		Claim("roles", roles).
 		Claim("client_type", "machine").
 		Build()

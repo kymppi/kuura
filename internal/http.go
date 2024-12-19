@@ -15,6 +15,7 @@ func newHTTPServer(
 	logger *slog.Logger,
 	config *Config,
 	jwkManager *jwks.JWKManager,
+	m2mService *m2m.M2MService,
 ) *http.Server {
 	mux := http.NewServeMux()
 
@@ -24,6 +25,7 @@ func newHTTPServer(
 		mux,
 		serverLogger,
 		jwkManager,
+		m2mService,
 	)
 
 	var handler http.Handler = mux

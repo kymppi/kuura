@@ -146,10 +146,13 @@ func (m *JWKManager) Export(ctx context.Context, serviceId uuid.UUID, id string)
 func (m *JWKManager) GetSigningKey(ctx context.Context, serviceId uuid.UUID) (jwk.Key, error) {
 	key, err := m.storage.GetCurrentPrivateKey(ctx, serviceId)
 	if err == nil {
-		return key.private, nil
+		signingKey := key.private
+		signingKey.Set(jwk.KeyIDKey, key.id)
+
+		return signingKey, nil
 	}
 
-	if !strings.Contains(err.Error(), "not found") {
+	if !strings.Contains(err.Error(), "no rows in result set") {
 		return nil, err
 	}
 
@@ -162,7 +165,10 @@ func (m *JWKManager) GetSigningKey(ctx context.Context, serviceId uuid.UUID) (jw
 		return nil, err
 	}
 
-	return key.private, nil
+	signingKey := key.private
+	signingKey.Set(jwk.KeyIDKey, key.id)
+
+	return signingKey, nil
 }
 
 func (m *JWKManager) promoteUpcomingKey(ctx context.Context, serviceId uuid.UUID) error {
