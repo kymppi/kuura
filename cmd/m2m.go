@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/google/uuid"
 	kuura "github.com/kymppi/kuura/internal"
 	"github.com/kymppi/kuura/internal/m2m"
 	"github.com/spf13/cobra"
@@ -24,14 +25,19 @@ func runM2M(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 func m2mRoleTemplateCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	return &cobra.Command{
-		Use:   "create [template-name] [...roles]",
+		Use:   "create [service-id] [template-name] [...roles]",
 		Short: "Create a new template with roles",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx := context.Background()
 
-			templateId := args[0]
-			roles := args[1:] // Remaining arguments are roles
+			serviceId, err := uuid.Parse(args[0])
+			if err != nil {
+				cmd.PrintErrf("Failed to parse serviceId: %s", err)
+				return
+			}
+			templateId := args[1]
+			roles := args[2:] // Remaining arguments are roles
 
 			queries, cleanup, err := kuura.InitializeDatabaseConnection(ctx, logger, config)
 			if err != nil {
@@ -48,7 +54,7 @@ func m2mRoleTemplateCreate(logger *slog.Logger, config *kuura.Config) *cobra.Com
 
 			m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
 
-			if err := m2mService.CreateRoleTemplate(ctx, templateId, roles); err != nil {
+			if err := m2mService.CreateRoleTemplate(ctx, serviceId, templateId, roles); err != nil {
 				cmd.PrintErrf("Failed to create role template: %s", err)
 				return
 			}
@@ -60,10 +66,17 @@ func m2mRoleTemplateCreate(logger *slog.Logger, config *kuura.Config) *cobra.Com
 
 func m2mRoleTemplateList(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	return &cobra.Command{
-		Use:   "list",
+		Use:   "list [service-id]",
 		Short: "List all role templates",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx := context.Background()
+
+			serviceId, err := uuid.Parse(args[0])
+			if err != nil {
+				cmd.PrintErrf("Failed to parse serviceId: %s", err)
+				return
+			}
 
 			queries, cleanup, err := kuura.InitializeDatabaseConnection(ctx, logger, config)
 			if err != nil {
@@ -80,7 +93,7 @@ func m2mRoleTemplateList(logger *slog.Logger, config *kuura.Config) *cobra.Comma
 
 			m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
 
-			templates, err := m2mService.GetRoleTemplates(ctx)
+			templates, err := m2mService.GetRoleTemplates(ctx, serviceId)
 			if err != nil {
 				cmd.PrintErrf("Failed to list role templates: %s", err)
 				return

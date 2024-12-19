@@ -18,8 +18,11 @@ CHECK (array_length(roles, 1) > 0);
 CREATE INDEX idx_m2m_sessions_subject_id ON m2m_sessions(subject_id);
 
 CREATE TABLE m2m_session_templates (
-    id text PRIMARY KEY,
-    roles text[]
+    id text NOT NULL,
+    roles text[],
+    service_id uuid NOT NULL REFERENCES services(id),
+
+    PRIMARY KEY (id, service_id)
 );
 
 ALTER TABLE m2m_session_templates 

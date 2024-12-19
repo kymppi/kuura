@@ -42,10 +42,11 @@ func NewM2MService(generatedQueries *db_gen.Queries, jwtIssuer string, jwkManage
 	}
 }
 
-func (s *M2MService) CreateRoleTemplate(ctx context.Context, name string, roles []string) error {
+func (s *M2MService) CreateRoleTemplate(ctx context.Context, serviceId uuid.UUID, name string, roles []string) error {
 	err := s.db.CreateM2MRoleTemplate(ctx, db_gen.CreateM2MRoleTemplateParams{
-		ID:    name,
-		Roles: roles,
+		ID:        name,
+		Roles:     roles,
+		ServiceID: utils.UUIDToPgType(serviceId),
 	})
 
 	if err != nil {
@@ -55,8 +56,8 @@ func (s *M2MService) CreateRoleTemplate(ctx context.Context, name string, roles 
 	return nil
 }
 
-func (s *M2MService) GetRoleTemplates(ctx context.Context) ([]*models.M2MRoleTemplate, error) {
-	data, err := s.db.GetM2MRoleTemplates(ctx)
+func (s *M2MService) GetRoleTemplates(ctx context.Context, serviceId uuid.UUID) ([]*models.M2MRoleTemplate, error) {
+	data, err := s.db.GetM2MRoleTemplates(ctx, utils.UUIDToPgType(serviceId))
 
 	if err != nil {
 		return nil, err

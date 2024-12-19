@@ -37,8 +37,9 @@ type M2mSession struct {
 }
 
 type M2mSessionTemplate struct {
-	ID    string   `json:"id"`
-	Roles []string `json:"roles"`
+	ID        string      `json:"id"`
+	Roles     []string    `json:"roles"`
+	ServiceID pgtype.UUID `json:"service_id"`
 }
 
 type Service struct {

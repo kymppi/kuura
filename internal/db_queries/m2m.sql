@@ -1,9 +1,10 @@
 -- name: CreateM2MRoleTemplate :exec
-INSERT INTO m2m_session_templates (id, roles)
-VALUES ($1, $2);
+INSERT INTO m2m_session_templates (id, roles, service_id)
+VALUES ($1, $2, $3);
 
 -- name: GetM2MRoleTemplates :many
-SELECT * FROM m2m_session_templates;
+SELECT * FROM m2m_session_templates
+WHERE service_id = $1;
 
 -- name: CreateM2MSession :exec
 INSERT INTO m2m_sessions (
@@ -22,7 +23,8 @@ SELECT
     $4 AS expires_at,
     $5 as service_id
 FROM m2m_session_templates t
-WHERE t.id = $6;
+WHERE t.id = $6
+  AND t.service_id = $5;
 
 -- name: GetM2MSessionAndService :one
 SELECT 

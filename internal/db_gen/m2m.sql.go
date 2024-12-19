@@ -13,17 +13,18 @@ import (
 )
 
 const createM2MRoleTemplate = `-- name: CreateM2MRoleTemplate :exec
-INSERT INTO m2m_session_templates (id, roles)
-VALUES ($1, $2)
+INSERT INTO m2m_session_templates (id, roles, service_id)
+VALUES ($1, $2, $3)
 `
 
 type CreateM2MRoleTemplateParams struct {
-	ID    string   `json:"id"`
-	Roles []string `json:"roles"`
+	ID        string      `json:"id"`
+	Roles     []string    `json:"roles"`
+	ServiceID pgtype.UUID `json:"service_id"`
 }
 
 func (q *Queries) CreateM2MRoleTemplate(ctx context.Context, arg CreateM2MRoleTemplateParams) error {
-	_, err := q.db.Exec(ctx, createM2MRoleTemplate, arg.ID, arg.Roles)
+	_, err := q.db.Exec(ctx, createM2MRoleTemplate, arg.ID, arg.Roles, arg.ServiceID)
 	return err
 }
 
@@ -45,6 +46,7 @@ SELECT
     $5 as service_id
 FROM m2m_session_templates t
 WHERE t.id = $6
+  AND t.service_id = $5
 `
 
 type CreateM2MSessionParams struct {
@@ -69,11 +71,12 @@ func (q *Queries) CreateM2MSession(ctx context.Context, arg CreateM2MSessionPara
 }
 
 const getM2MRoleTemplates = `-- name: GetM2MRoleTemplates :many
-SELECT id, roles FROM m2m_session_templates
+SELECT id, roles, service_id FROM m2m_session_templates
+WHERE service_id = $1
 `
 
-func (q *Queries) GetM2MRoleTemplates(ctx context.Context) ([]M2mSessionTemplate, error) {
-	rows, err := q.db.Query(ctx, getM2MRoleTemplates)
+func (q *Queries) GetM2MRoleTemplates(ctx context.Context, serviceID pgtype.UUID) ([]M2mSessionTemplate, error) {
+	rows, err := q.db.Query(ctx, getM2MRoleTemplates, serviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +84,7 @@ func (q *Queries) GetM2MRoleTemplates(ctx context.Context) ([]M2mSessionTemplate
 	items := []M2mSessionTemplate{}
 	for rows.Next() {
 		var i M2mSessionTemplate
-		if err := rows.Scan(&i.ID, &i.Roles); err != nil {
+		if err := rows.Scan(&i.ID, &i.Roles, &i.ServiceID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
