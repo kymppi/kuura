@@ -1,5 +1,6 @@
 FROM gcr.io/distroless/static-debian12
 
 COPY kuura /kuura
+USER nonroot
 ENTRYPOINT ["/kuura"]
 
