@@ -111,6 +111,7 @@ func (s *M2MService) CreateAccessToken(ctx context.Context, sessionId string, re
 	valid, roles, service, subjectId, err := s.validateRefreshTokenAndGetRolesAndServiceAndSubjectId(ctx, sessionId, refreshToken)
 
 	if err != nil || !valid {
+		//TODO: log real error to console, could be like "role doesn't exist"
 		return "", "", errors.New("invalid token")
 	}
 
