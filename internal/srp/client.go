@@ -7,18 +7,23 @@ import (
 	"math/big"
 )
 
+type SRPOptions struct {
+	PrimeHex  string
+	Generator string
+}
+
 type SRPClient struct {
 	Prime     *big.Int
 	Generator *big.Int
 	Key       *big.Int
 }
 
-func NewSRPClient(prime, generator string, key *big.Int) (*SRPClient, error) {
-	p, ok := new(big.Int).SetString(prime, 16)
+func NewSRPClient(options *SRPOptions, key *big.Int) (*SRPClient, error) {
+	p, ok := new(big.Int).SetString(options.PrimeHex, 16)
 	if !ok {
 		return nil, errors.New("invalid prime")
 	}
-	g, ok := new(big.Int).SetString(generator, 16)
+	g, ok := new(big.Int).SetString(options.Generator, 16)
 	if !ok {
 		return nil, errors.New("invalid generator")
 	}

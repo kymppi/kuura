@@ -73,7 +73,12 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 				return
 			}
 
-			srpClient, err := srp.NewSRPClient(config.SRP_PRIME, config.SRP_GENERATOR, srpKey)
+			options := &srp.SRPOptions{
+				PrimeHex:  config.SRP_PRIME,
+				Generator: config.SRP_GENERATOR,
+			}
+
+			srpClient, err := srp.NewSRPClient(options, srpKey)
 			if err != nil {
 				cmd.PrintErrf("Failed to create SRP struct: %s", err)
 				return

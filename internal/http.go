@@ -1,31 +1,46 @@
 package kuura
 
 import (
+	"embed"
 	"errors"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 
 	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/m2m"
 	m "github.com/kymppi/kuura/internal/middleware"
+	"github.com/kymppi/kuura/internal/srp"
 )
+
+//go:embed templates/*.tmpl
+var templates embed.FS
+
+//go:embed static/*
+var staticAssets embed.FS
 
 func newHTTPServer(
 	logger *slog.Logger,
 	config *Config,
 	jwkManager *jwks.JWKManager,
 	m2mService *m2m.M2MService,
+	srpOptions *srp.SRPOptions,
 ) *http.Server {
 	mux := http.NewServeMux()
 
 	serverLogger := logger.With(slog.String("type", "main"))
+
+	tmpl := template.Must(template.ParseFS(templates, "templates/*.tmpl"))
 
 	addMainRoutes(
 		mux,
 		serverLogger,
 		jwkManager,
 		m2mService,
+		srpOptions,
+		staticAssets,
+		tmpl,
 	)
 
 	var handler http.Handler = mux
