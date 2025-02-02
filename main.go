@@ -16,8 +16,8 @@ var (
 	Branch string
 )
 
-//go:generate cd frontend && pnpm install
-//go:generate cd frontend && pnpm run build
+//go:generate sh -c "cd frontend && pnpm install"
+//go:generate sh -c "cd frontend && pnpm run build"
 //go:embed frontend/dist/*
 var frontendDist embed.FS
 
