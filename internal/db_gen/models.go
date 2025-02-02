@@ -56,3 +56,22 @@ type ServiceKeyState struct {
 	JwkPrivateID string      `json:"jwk_private_id"`
 	Status       string      `json:"status"`
 }
+
+type Session struct {
+	ID               string             `json:"id"`
+	UserID           pgtype.Text        `json:"user_id"`
+	RefreshTokenHash string             `json:"refresh_token_hash"`
+	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+type User struct {
+	ID          string             `json:"id"`
+	Username    string             `json:"username"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	LastLoginAt pgtype.Timestamptz `json:"last_login_at"`
+	Disabled    pgtype.Bool        `json:"disabled"`
+	Salt        string             `json:"salt"`
+	Verifier    string             `json:"verifier"`
+	Roles       []string           `json:"roles"`
+}

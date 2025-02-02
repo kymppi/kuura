@@ -40,6 +40,7 @@ func NewRootCommand(config *kuura.Config, logger *slog.Logger) *cobra.Command {
 	rootCmd.AddCommand(runServices(logger, config))
 	rootCmd.AddCommand(runJwks(logger, config))
 	rootCmd.AddCommand(runM2M(logger, config))
+	rootCmd.AddCommand(runUsers(logger, config))
 
 	return rootCmd
 }

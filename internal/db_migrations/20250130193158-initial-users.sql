@@ -3,10 +3,12 @@
 CREATE TABLE users (
     id text PRIMARY KEY,
     username text UNIQUE NOT NULL,
-    email text UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     last_login_at TIMESTAMP WITH TIME ZONE,
-    disabled boolean DEFAULT false
+    disabled boolean DEFAULT false,
+    salt text NOT NULL, -- SRP
+    verifier text NOT NULL, -- SRP
+    roles text[] DEFAULT '{}'
 );
 
 CREATE TABLE sessions (
