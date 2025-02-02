@@ -2,6 +2,7 @@ package kuura
 
 import (
 	"context"
+	"embed"
 	"log/slog"
 	"net/http"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/kymppi/kuura/internal/srp"
 )
 
-func RunServer(ctx context.Context, logger *slog.Logger, config *Config) error {
+func RunServer(ctx context.Context, logger *slog.Logger, config *Config, frontendFS embed.FS) error {
 	queries, cleanup, err := InitializeDatabaseConnection(ctx, logger, config)
 	if err != nil {
 		return err
@@ -28,7 +29,7 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config) error {
 		Generator: config.SRP_GENERATOR,
 	}
 
-	mainServer := newHTTPServer(logger, config, jwkManager, m2mService, srpOptions)
+	mainServer := newHTTPServer(logger, config, jwkManager, m2mService, srpOptions, frontendFS)
 	managementServer := newManagementServer(logger, config, jwkManager, m2mService)
 
 	errChan := make(chan error, 2)

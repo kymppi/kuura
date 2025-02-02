@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"embed"
 	"io"
 	"log/slog"
 	"os"
@@ -20,12 +21,12 @@ var (
 	rootCmd *cobra.Command
 )
 
-func NewRootCommand(config *kuura.Config, logger *slog.Logger) *cobra.Command {
+func NewRootCommand(config *kuura.Config, logger *slog.Logger, frontendFS embed.FS) *cobra.Command {
 	rootCmd = &cobra.Command{
 		Use:     "kuura",
 		Short:   "Kuura Authentication Server",
 		Long:    `Kuura is an authentication server with great M2M support.`,
-		Run:     runRoot(config, logger),
+		Run:     runRoot(config, logger, frontendFS),
 		Version: utils.FormatVersion(GitSHA, Branch),
 	}
 
@@ -45,7 +46,7 @@ func NewRootCommand(config *kuura.Config, logger *slog.Logger) *cobra.Command {
 	return rootCmd
 }
 
-func runRoot(config *kuura.Config, logger *slog.Logger) func(cmd *cobra.Command, args []string) {
+func runRoot(config *kuura.Config, logger *slog.Logger, frontendFS embed.FS) func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		ctx, stop := signal.NotifyContext(context.Background(),
 			os.Interrupt,
@@ -53,7 +54,7 @@ func runRoot(config *kuura.Config, logger *slog.Logger) func(cmd *cobra.Command,
 		)
 		defer stop()
 
-		if err := kuura.RunServer(ctx, logger, config); err != nil {
+		if err := kuura.RunServer(ctx, logger, config, frontendFS); err != nil {
 			logger.Error("Fatal Application Error", slog.String("error", err.Error()))
 			os.Exit(1)
 		}

@@ -4,7 +4,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"html/template"
 	"log/slog"
 	"net/http"
 
@@ -14,24 +13,17 @@ import (
 	"github.com/kymppi/kuura/internal/srp"
 )
 
-//go:embed templates/*.tmpl
-var templates embed.FS
-
-//go:embed static/*
-var staticAssets embed.FS
-
 func newHTTPServer(
 	logger *slog.Logger,
 	config *Config,
 	jwkManager *jwks.JWKManager,
 	m2mService *m2m.M2MService,
 	srpOptions *srp.SRPOptions,
+	frontendFS embed.FS,
 ) *http.Server {
 	mux := http.NewServeMux()
 
 	serverLogger := logger.With(slog.String("type", "main"))
-
-	tmpl := template.Must(template.ParseFS(templates, "templates/*.tmpl"))
 
 	addMainRoutes(
 		mux,
@@ -39,8 +31,7 @@ func newHTTPServer(
 		jwkManager,
 		m2mService,
 		srpOptions,
-		staticAssets,
-		tmpl,
+		frontendFS,
 	)
 
 	var handler http.Handler = mux
