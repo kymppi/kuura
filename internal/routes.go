@@ -27,7 +27,7 @@ func addMainRoutes(
 	mux.Handle("GET /v1/{serviceId}/jwks.json", endpoints.V1JwksHandler(logger, jwkManager))
 	mux.Handle("POST /v1/m2m/access", endpoints.V1M2MRefreshAccessToken(logger, m2mService))
 
-	mux.Handle("GET /srp.json", endpoints.SRPVars(logger, srpOptions))
+	mux.Handle("GET /v1/srp.json", endpoints.SRPVars(logger, srpOptions))
 
 	mux.Handle("GET /login", endpoints.LoginPage(logger, tmpl, srpOptions))
 	mux.Handle("GET /static/", http.FileServer(staticFS))
