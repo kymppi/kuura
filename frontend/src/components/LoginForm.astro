@@ -1,0 +1,62 @@
+---
+
+---
+
+<form id="login-form">
+  <h1>Login</h1>
+  <p id="error-message" style="color: red; display: none;"></p>
+  <label>
+    Username:
+    <input type="text" id="username" name="username" />
+  </label>
+  <label>
+    Password:
+    <input type="password" id="password" name="password" />
+  </label>
+  <button type="submit">Login</button>
+</form>
+
+<script>
+  import SRPClient from '../lib/srp.client';
+
+  const client = new SRPClient();
+  client.init();
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('login-form');
+    if (!form) return;
+
+    const errorMessage = document.getElementById('error-message');
+    const usernameInput = form.querySelector('#username') as HTMLInputElement;
+    const passwordInput = form.querySelector('#password') as HTMLInputElement;
+
+    if (!errorMessage) return;
+    if (!usernameInput) return;
+    if (!passwordInput) return;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!username || !password) {
+        errorMessage.textContent = 'Username and password are required!';
+        errorMessage.style.display = 'block';
+        return;
+      }
+
+      errorMessage.style.display = 'none';
+      console.log(`Username: ${username}, Password: ${password}`);
+
+      const result = await client.login(username, password);
+      if (!result.success) {
+        errorMessage.textContent = result.error;
+        errorMessage.style.display = 'block';
+      } else {
+        errorMessage.style.display = 'none';
+        alert("logged in!")
+      }
+    });
+  });
+</script>
