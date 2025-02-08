@@ -59,8 +59,6 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			userService := users.NewUserService(logger, queries)
-
 			prime, ok := new(big.Int).SetString(config.SRP_PRIME, 16)
 			if !ok {
 				cmd.PrintErrf("Invalid SRP_PRIME value, expected hex")
@@ -77,6 +75,8 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 				PrimeHex:  config.SRP_PRIME,
 				Generator: config.SRP_GENERATOR,
 			}
+
+			userService := users.NewUserService(logger, queries, options)
 
 			srpClient, err := srp.NewSRPClient(options, srpKey)
 			if err != nil {

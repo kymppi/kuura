@@ -65,6 +65,12 @@ type Session struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 }
 
+type SrpPremaster struct {
+	ID        string             `json:"id"`
+	Data      string             `json:"data"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
 type User struct {
 	ID          string             `json:"id"`
 	Username    string             `json:"username"`

@@ -47,7 +47,9 @@ export default class SRPClient {
     try {
       await this.initiateAuthentication();
 
-      this.calculatePremaster();
+      await this.calculatePremaster();
+
+      console.log('premaster', this.premaster);
 
       await this.verify();
     } catch (error) {
@@ -61,6 +63,7 @@ export default class SRPClient {
     try {
       const response = (await this.request('/v1/srp/verify', 'POST', {
         premaster: this.premaster.toString(),
+        I: this.I,
       })) as { success: boolean };
 
       if (!response.success) {
@@ -76,9 +79,11 @@ export default class SRPClient {
     await this.calculatek();
     await this.calculatex();
 
-    this.premaster =
-      (this.B - this.k * this.g ** this.x) ** (this.a + this.u * this.x) %
-      this.N;
+    this.premaster = modPow(
+      this.B - this.k * modPow(this.g, this.x, this.N),
+      this.a + this.u * this.x,
+      this.N
+    );
   }
 
   private async calculateu() {
@@ -160,12 +165,16 @@ export default class SRPClient {
     );
   }
 
-  private async hash(data: any): Promise<string> {
-    const encoder = new TextEncoder();
-    const dataBuffer = encoder.encode(JSON.stringify(data));
-    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  private async hash(data: string | object): Promise<string> {
+    try {
+      const encoder = new TextEncoder();
+      const dataBuffer = encoder.encode(JSON.stringify(data));
+      const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch (error) {
+      throw new Error(`Hashing failed: ${error}`);
+    }
   }
 
   private async request(

@@ -8,6 +8,7 @@ import (
 
 	"github.com/kymppi/kuura/internal/m2m"
 	"github.com/kymppi/kuura/internal/srp"
+	"github.com/kymppi/kuura/internal/users"
 )
 
 func RunServer(ctx context.Context, logger *slog.Logger, config *Config, frontendFS embed.FS) error {
@@ -29,7 +30,9 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config, fronten
 		Generator: config.SRP_GENERATOR,
 	}
 
-	mainServer := newHTTPServer(logger, config, jwkManager, m2mService, srpOptions, frontendFS)
+	userService := users.NewUserService(logger, queries, srpOptions)
+
+	mainServer := newHTTPServer(logger, config, jwkManager, m2mService, srpOptions, frontendFS, userService)
 	managementServer := newManagementServer(logger, config, jwkManager, m2mService)
 
 	errChan := make(chan error, 2)

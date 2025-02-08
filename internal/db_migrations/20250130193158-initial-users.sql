@@ -11,6 +11,12 @@ CREATE TABLE users (
     roles text[] DEFAULT '{}'
 );
 
+CREATE TABLE srp_premasters (
+    id text PRIMARY KEY REFERENCES users(id),
+    data text NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
 CREATE TABLE sessions (
     id text PRIMARY KEY,
     user_id text REFERENCES users(id),
@@ -22,3 +28,7 @@ CREATE TABLE sessions (
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 
 -- +migrate Down
+DROP INDEX idx_sessions_user_id;
+DROP TABLE sessions;
+DROP TABLE srp_premasters;
+DROP TABLE users;

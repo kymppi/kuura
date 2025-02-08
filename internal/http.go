@@ -11,6 +11,7 @@ import (
 	"github.com/kymppi/kuura/internal/m2m"
 	m "github.com/kymppi/kuura/internal/middleware"
 	"github.com/kymppi/kuura/internal/srp"
+	"github.com/kymppi/kuura/internal/users"
 )
 
 func newHTTPServer(
@@ -20,6 +21,7 @@ func newHTTPServer(
 	m2mService *m2m.M2MService,
 	srpOptions *srp.SRPOptions,
 	frontendFS embed.FS,
+	userService *users.UserService,
 ) *http.Server {
 	mux := http.NewServeMux()
 
@@ -32,6 +34,7 @@ func newHTTPServer(
 		m2mService,
 		srpOptions,
 		frontendFS,
+		userService,
 	)
 
 	var handler http.Handler = mux

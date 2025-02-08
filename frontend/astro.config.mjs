@@ -12,7 +12,7 @@ export default defineConfig({
           secure: false,
         },
       },
-      allowedHosts: ['hiisi'],
+      allowedHosts: ['hiisi', 'sunny-oddly-ape.ngrok-free.app'],
     },
   },
 });
