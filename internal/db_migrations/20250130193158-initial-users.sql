@@ -6,14 +6,13 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     last_login_at TIMESTAMP WITH TIME ZONE,
     disabled boolean DEFAULT false,
-    salt text NOT NULL, -- SRP
-    verifier text NOT NULL, -- SRP
+    encoded_verifier text NOT NULL, -- SRP
     roles text[] DEFAULT '{}'
 );
 
-CREATE TABLE srp_premasters (
-    id text PRIMARY KEY REFERENCES users(id),
-    data text NOT NULL,
+CREATE TABLE user_srp (
+    uid TEXT PRIMARY KEY REFERENCES users(id),
+    encoded_server bytea,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
@@ -31,4 +30,5 @@ CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 DROP INDEX idx_sessions_user_id;
 DROP TABLE sessions;
 DROP TABLE srp_premasters;
+DROP TABLE user_srp;
 DROP TABLE users;

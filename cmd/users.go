@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"math/big"
 
 	kuura "github.com/kymppi/kuura/internal"
-	"github.com/kymppi/kuura/internal/srp"
 	"github.com/kymppi/kuura/internal/users"
 	"github.com/manifoldco/promptui"
+	"github.com/opencoff/go-srp"
 	"github.com/spf13/cobra"
 )
 
@@ -59,40 +58,21 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			prime, ok := new(big.Int).SetString(config.SRP_PRIME, 16)
-			if !ok {
-				cmd.PrintErrf("Invalid SRP_PRIME value, expected hex")
-				return
-			}
-
-			srpKey, err := srp.GenerateRandomKey(prime)
+			s, err := srp.New(2048)
 			if err != nil {
-				cmd.PrintErrf("Failed to create a random key for SRP: %s", err)
-				return
+				panic(err)
 			}
 
-			options := &srp.SRPOptions{
-				PrimeHex:  config.SRP_PRIME,
-				Generator: config.SRP_GENERATOR,
-			}
-
-			userService := users.NewUserService(logger, queries, options)
-
-			srpClient, err := srp.NewSRPClient(options, srpKey)
+			v, err := s.Verifier([]byte(username), []byte(password))
 			if err != nil {
-				cmd.PrintErrf("Failed to create SRP struct: %s", err)
-				return
+				panic(err)
 			}
 
-			srp_salt_int, srp_verifier_int, err := srpClient.Register(username, password)
-			if err != nil {
-				cmd.PrintErrf("SRP register failed: %s", err)
-			}
+			_, vh := v.Encode()
 
-			srp_salt := srp_salt_int.Text(16) // hex
-			srp_verifier := srp_verifier_int.Text(16)
+			userService := users.NewUserService(logger, queries)
 
-			uid, err := userService.Register(ctx, username, srp_salt, srp_verifier)
+			uid, err := userService.Register(ctx, username, vh)
 			if err != nil {
 				cmd.PrintErrf("Failed to create user: %s", err)
 				return

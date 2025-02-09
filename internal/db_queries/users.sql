@@ -1,20 +1,19 @@
 -- name: CreateUser :exec
-INSERT INTO users (id, username, salt, verifier)
-VALUES ($1, $2, $3, $4);
-
--- name: GetUserSaltAndVerifier :one
-SELECT id, salt, verifier FROM users
-WHERE username = $1;
-
--- name: StorePremaster :exec
-INSERT INTO srp_premasters (id, data, expires_at)
+INSERT INTO users (id, username, encoded_verifier)
 VALUES ($1, $2, $3);
 
--- name: GetAndDeletePremaster :one
-DELETE FROM srp_premasters 
-WHERE id = $1 AND expires_at > NOW()
-RETURNING data;
+-- name: GetSRPVerifier :one
+SELECT encoded_verifier FROM users WHERE id = $1;
+
+-- name: GetAndDeleteSRPServer :one
+DELETE FROM user_srp
+WHERE uid = $1 AND expires_at > NOW()
+RETURNING *;
 
 -- name: GetUserIDFromUsername :one
 SELECT id FROM users
 WHERE username = $1;
+
+-- name: SaveSRPServer :exec
+INSERT INTO user_srp (uid, encoded_server, expires_at)
+VALUES ($1, $2, $3);

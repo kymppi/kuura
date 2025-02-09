@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/kymppi/kuura/internal/m2m"
-	"github.com/kymppi/kuura/internal/srp"
 	"github.com/kymppi/kuura/internal/users"
 )
 
@@ -24,15 +23,9 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config, fronten
 	}
 
 	m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
+	userService := users.NewUserService(logger, queries)
 
-	srpOptions := &srp.SRPOptions{
-		PrimeHex:  config.SRP_PRIME,
-		Generator: config.SRP_GENERATOR,
-	}
-
-	userService := users.NewUserService(logger, queries, srpOptions)
-
-	mainServer := newHTTPServer(logger, config, jwkManager, m2mService, srpOptions, frontendFS, userService)
+	mainServer := newHTTPServer(logger, config, jwkManager, m2mService, frontendFS, userService)
 	managementServer := newManagementServer(logger, config, jwkManager, m2mService)
 
 	errChan := make(chan error, 2)

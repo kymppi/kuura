@@ -5,68 +5,57 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"math/big"
 	"net/http"
 
-	"github.com/kymppi/kuura/internal/srp"
 	"github.com/kymppi/kuura/internal/users"
 )
 
-func SRPVars(logger *slog.Logger, srpOptions *srp.SRPOptions) http.Handler {
-	type SRPVarsData struct {
-		SRPPrime     string `json:"prime"`
-		SRPGenerator string `json:"generator"`
-	}
+// func SRPVars(logger *slog.Logger, srpOptions *srp.SRPOptions) http.Handler {
+// 	type SRPVarsData struct {
+// 		SRPPrime     string `json:"prime"`
+// 		SRPGenerator string `json:"generator"`
+// 	}
 
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			data := SRPVarsData{
-				SRPPrime:     srpOptions.PrimeHex,
-				SRPGenerator: srpOptions.Generator,
-			}
+// 	return http.HandlerFunc(
+// 		func(w http.ResponseWriter, r *http.Request) {
+// 			data := SRPVarsData{
+// 				SRPPrime:     srpOptions.PrimeHex,
+// 				SRPGenerator: srpOptions.Generator,
+// 			}
 
-			if err := encode(w, r, http.StatusOK, data); err != nil {
-				logger.Error("failed to encode SRP vars response", slog.String("error", err.Error()))
-				http.Error(w, "Failed to encode SRP vars response", http.StatusInternalServerError)
-				return
-			}
-		},
-	)
+// 			if err := encode(w, r, http.StatusOK, data); err != nil {
+// 				logger.Error("failed to encode SRP vars response", slog.String("error", err.Error()))
+// 				http.Error(w, "Failed to encode SRP vars response", http.StatusInternalServerError)
+// 				return
+// 			}
+// 		},
+// 	)
+// }
+
+type srpClientBegin struct {
+	Data string `json:"data"`
 }
 
-type srpChallengeRequest struct {
-	I string `json:"I"`
-	A string `json:"A"`
-}
-
-func (r *srpChallengeRequest) Valid(ctx context.Context) (problems map[string]string) {
+func (r *srpClientBegin) Valid(ctx context.Context) (problems map[string]string) {
 	problems = make(map[string]string)
 
-	if r.I == "" {
-		problems["I"] = "'I' cannot be empty"
-	}
-	if r.A == "" {
-		problems["A"] = "'A' cannot be empty"
-	} else {
-		if _, ok := new(big.Int).SetString(r.A, 16); !ok {
-			problems["A"] = "'A' is invalid"
-		}
+	if r.Data == "" {
+		problems["data"] = "'data' cannot be empty"
 	}
 
 	return problems
 }
 
-func V1_SRPChallenge(logger *slog.Logger, userService *users.UserService) http.Handler {
+func V1_SRP_ClientBegin(logger *slog.Logger, userService *users.UserService) http.Handler {
 	type response struct {
-		Salt string `json:"s"`
-		B    string `json:"B"`
+		Data string `json:"data"`
 	}
 
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			payload, problems, err := decodeValid[*srpChallengeRequest](r)
+			payload, problems, err := decodeValid[*srpClientBegin](r)
 			if err != nil {
 				if problems != nil {
 					w.Header().Set("Content-Type", "application/json")
@@ -83,15 +72,7 @@ func V1_SRPChallenge(logger *slog.Logger, userService *users.UserService) http.H
 				return
 			}
 
-			/*
-				1. s, v = lookup(I)
-				2. gen b and B
-				3. calculate premaster and store in db with 5min TTL
-				4. return s and B
-			*/
-
-			A, _ := new(big.Int).SetString(payload.A, 16) // validation already checked for errors
-			salt, B, err := userService.SRPChallenge(ctx, payload.I, A)
+			value, err := userService.ClientBegin(ctx, payload.Data)
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
@@ -105,8 +86,7 @@ func V1_SRPChallenge(logger *slog.Logger, userService *users.UserService) http.H
 			}
 
 			data := response{
-				Salt: salt,
-				B:    B.String(),
+				Data: value,
 			}
 
 			if err := encode(w, r, http.StatusOK, data); err != nil {
@@ -119,26 +99,27 @@ func V1_SRPChallenge(logger *slog.Logger, userService *users.UserService) http.H
 }
 
 type srpVerifyRequest struct {
-	Premaster string `json:"premaster"`
-	I         string `json:"I"`
+	Data     string `json:"data"`
+	Identity string `json:"identity"`
 }
 
 func (r *srpVerifyRequest) Valid(ctx context.Context) (problems map[string]string) {
 	problems = make(map[string]string)
 
-	if r.I == "" {
-		problems["I"] = "'I' cannot be empty"
+	if r.Data == "" {
+		problems["data"] = "'data' cannot be empty"
 	}
-	if r.Premaster == "" {
-		problems["premaster"] = "'premaster' cannot be empty"
+	if r.Identity == "" {
+		problems["identity"] = "'identity' cannot be empty"
 	}
 
 	return problems
 }
 
-func V1_SRPVerify(logger *slog.Logger, userService *users.UserService) http.Handler {
+func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService) http.Handler {
 	type response struct {
-		Success bool `json:"success"`
+		Success bool   `json:"success"`
+		Data    string `json:"data"`
 	}
 
 	return http.HandlerFunc(
@@ -162,7 +143,7 @@ func V1_SRPVerify(logger *slog.Logger, userService *users.UserService) http.Hand
 				return
 			}
 
-			err = userService.SRPVerify(ctx, payload.I, payload.Premaster)
+			serverProof, err := userService.ClientVerify(ctx, payload.Identity, payload.Data)
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
@@ -177,6 +158,7 @@ func V1_SRPVerify(logger *slog.Logger, userService *users.UserService) http.Hand
 
 			data := response{
 				Success: true,
+				Data:    serverProof,
 			}
 
 			if err := encode(w, r, http.StatusOK, data); err != nil {

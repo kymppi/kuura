@@ -8,7 +8,6 @@ import (
 	"github.com/kymppi/kuura/internal/endpoints"
 	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/m2m"
-	"github.com/kymppi/kuura/internal/srp"
 	"github.com/kymppi/kuura/internal/users"
 )
 
@@ -17,7 +16,6 @@ func addMainRoutes(
 	logger *slog.Logger,
 	jwkManager *jwks.JWKManager,
 	m2mService *m2m.M2MService,
-	srpOptions *srp.SRPOptions,
 	frontendFS embed.FS,
 	userService *users.UserService,
 ) {
@@ -25,9 +23,8 @@ func addMainRoutes(
 	mux.Handle("GET /v1/{serviceId}/jwks.json", endpoints.V1JwksHandler(logger, jwkManager))
 	mux.Handle("POST /v1/m2m/access", endpoints.V1M2MRefreshAccessToken(logger, m2mService))
 
-	mux.Handle("GET /v1/srp.json", endpoints.SRPVars(logger, srpOptions))
-	mux.Handle("POST /v1/srp/challenge", endpoints.V1_SRPChallenge(logger, userService))
-	mux.Handle("POST /v1/srp/verify", endpoints.V1_SRPVerify(logger, userService))
+	mux.Handle("POST /v1/srp/challenge", endpoints.V1_SRP_ClientBegin(logger, userService))
+	mux.Handle("POST /v1/srp/verify", endpoints.V1_SRP_ClientVerify(logger, userService))
 
 	mux.Handle("GET /", endpoints.AstroHandler(logger, frontendFS))
 
