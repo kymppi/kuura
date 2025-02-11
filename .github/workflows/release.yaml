@@ -34,7 +34,7 @@ jobs:
         with:
           sqlc-version: '1.27.0'
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6.1.0
+        uses: goreleaser/goreleaser-action@v6.2.1
         with:
           args: release --clean
         env:
