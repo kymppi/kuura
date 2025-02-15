@@ -68,6 +68,7 @@ type Session struct {
 type User struct {
 	ID              string             `json:"id"`
 	Username        string             `json:"username"`
+	HashedUsername  string             `json:"hashed_username"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	LastLoginAt     pgtype.Timestamptz `json:"last_login_at"`
 	Disabled        pgtype.Bool        `json:"disabled"`

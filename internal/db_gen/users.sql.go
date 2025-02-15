@@ -12,18 +12,24 @@ import (
 )
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (id, username, encoded_verifier)
-VALUES ($1, $2, $3)
+INSERT INTO users (id, username, hashed_username, encoded_verifier)
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateUserParams struct {
 	ID              string `json:"id"`
 	Username        string `json:"username"`
+	HashedUsername  string `json:"hashed_username"`
 	EncodedVerifier string `json:"encoded_verifier"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser, arg.ID, arg.Username, arg.EncodedVerifier)
+	_, err := q.db.Exec(ctx, createUser,
+		arg.ID,
+		arg.Username,
+		arg.HashedUsername,
+		arg.EncodedVerifier,
+	)
 	return err
 }
 
@@ -58,6 +64,18 @@ WHERE username = $1
 
 func (q *Queries) GetUserIDFromUsername(ctx context.Context, username string) (string, error) {
 	row := q.db.QueryRow(ctx, getUserIDFromUsername, username)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getUserIDFromUsernameHash = `-- name: GetUserIDFromUsernameHash :one
+SELECT id FROM users
+WHERE hashed_username = $1
+`
+
+func (q *Queries) GetUserIDFromUsernameHash(ctx context.Context, hashedUsername string) (string, error) {
+	row := q.db.QueryRow(ctx, getUserIDFromUsernameHash, hashedUsername)
 	var id string
 	err := row.Scan(&id)
 	return id, err

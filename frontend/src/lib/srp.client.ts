@@ -1,209 +1,239 @@
 import { modPow } from 'bigint-toolkit';
 
-export type LoginError =
-  | 'INVALID_CREDENTIALS'
-  | 'SERVER_ERROR'
-  | 'NETWORK_ERROR';
+export interface PrimeField {
+  g: bigint;
+  N: bigint;
+  n: number;
+}
 
-export default class SRPClient {
-  private N: bigint = 0n;
-  private g: bigint = 0n;
+export const DefaultPrimeField: PrimeField = {
+  // the 4096-bit Group from RFC 5054
+  g: BigInt(5),
+  N: BigInt(
+    '0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AAAC42DAD33170D04507A33A85521ABDF1CBA64ECFB850458DBEF0A8AEA71575D060C7DB3970F85A6E1E4C7ABF5AE8CDB0933D71E8C94E04A25619DCEE3D2261AD2EE6BF12FFA06D98A0864D87602733EC86A64521F2B18177B200CBBE117577A615D6C770988C0BAD946E208E24FA074E5AB3143DB5BFCE0FD108E4B82D120A92108011A723C12A787E6D788719A10BDBA5B2699C327186AF4E23C1A946834B6150BDA2583E9CA2AD44CE8DBBBC2DB04DE8EF92E8EFC141FBECAA6287C59474E6BC05D99B2964FA090C3A2233BA186515BE7ED1F612970CEE2D7AFB81BDD762170481CD0069127D5B05AA993B4EA988D8FDDC186FFB7DC90A6C08F4DF435C934063199FFFFFFFFFFFFFFFF'
+  ),
+  n: 512,
+};
 
-  private I: string = '';
-  private P: string = '';
+export interface SRPClientInstance {
+  s: SRPClient;
+  i: Uint8Array;
+  p: Uint8Array;
+  a: bigint;
+  xA: bigint;
+  k: bigint;
+  xK?: Uint8Array;
+  xM?: Uint8Array;
+}
 
-  private a: bigint = 0n;
-  private A: bigint = 0n;
+export class SRPClient {
+  private pf: PrimeField;
+  private h: string = 'SHA-256';
 
-  private s: string = '';
-  private B: bigint = 0n;
-
-  private u: bigint = 0n;
-  private k: bigint = 0n;
-  private x: bigint = 0n;
-  private premaster: bigint = 0n;
-
-  // should call on login page load
-  public async init() {
-    const data = (await this.request('/v1/srp.json', 'GET')) as {
-      prime: string;
-      generator: string;
-    };
-
-    this.N = BigInt(`0x${data.prime}`);
-    this.g = BigInt(`0x${data.generator}`);
-
-    this.a = this.generatePrivateKey();
-    this.A = this.generatePublicKey();
+  constructor(primeField: PrimeField) {
+    this.pf = primeField;
   }
 
-  public async login(
-    username: string,
-    password: string
-  ): Promise<{ success: true } | { success: false; error: LoginError }> {
-    this.I = username;
-    this.P = password;
+  /**
+   * Creates a new SRP client instance
+   */
+  async newClient(I: Uint8Array, p: Uint8Array): Promise<SRPClientInstance> {
+    const i = await this.hashbyte(I);
+    const hashedPassword = await this.hashbyte(p);
+    const a = await this.randBigInt(this.pf.n * 8);
 
-    try {
-      await this.initiateAuthentication();
-
-      await this.calculatePremaster();
-
-      console.log('premaster', this.premaster);
-
-      await this.verify();
-    } catch (error) {
-      return this.handleLoginError(error);
-    }
-
-    return { success: true };
-  }
-
-  private async verify() {
-    try {
-      const response = (await this.request('/v1/srp/verify', 'POST', {
-        premaster: this.premaster.toString(),
-        I: this.I,
-      })) as { success: boolean };
-
-      if (!response.success) {
-        throw new Error('Invalid challenge');
-      }
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  private async calculatePremaster() {
-    await this.calculateu();
-    await this.calculatek();
-    await this.calculatex();
-
-    this.premaster = modPow(
-      this.B - this.k * modPow(this.g, this.x, this.N),
-      this.a + this.u * this.x,
-      this.N
+    // Calculate k = H(N, pad(g))
+    const paddedG = this.pad(this.bigIntToUint8Array(this.pf.g), this.pf.n);
+    const k = await this.hashbigint(
+      this.bigIntToUint8Array(this.pf.N),
+      paddedG
     );
+
+    // Calculate A = g^a % N
+    const xA = modPow(this.pf.g, a, this.pf.N);
+
+    return {
+      s: this,
+      i,
+      p: hashedPassword,
+      a,
+      xA,
+      k,
+    };
   }
 
-  private async calculateu() {
-    const paddedA = this.A.toString(16).padStart(512, '0');
-    const paddedB = this.B.toString(16).padStart(512, '0');
-    const concatenated = paddedA + paddedB;
-    const hash = await this.hash(concatenated);
-    this.u = BigInt(`0x${hash}`);
+  /**
+   * Returns the hashed identity
+   */
+  getIdentity(client: SRPClientInstance): string {
+    const iHex = Array.from(client.i)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    return iHex;
   }
 
-  private async calculatex() {
-    const inner = await this.hash(`${this.I}:${this.P}`);
-    const concatenated = this.s + inner;
-    const x = await this.hash(concatenated);
-    this.x = BigInt(`0x${x}`);
+  /**
+   * Returns client credentials in the same format as the Go version
+   */
+  getCredentials(client: SRPClientInstance): string {
+    const iHex = Array.from(client.i)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const xAHex = client.xA.toString(16);
+
+    return `${iHex}:${xAHex}`;
   }
 
-  private async calculatek() {
-    const paddedG = this.g.toString(16).padStart(512, '0');
-    const nHex = this.N.toString(16);
-    const k = await this.hash(nHex + paddedG);
-    this.k = BigInt(`0x${k}`);
-  }
-
-  private handleLoginError(error: unknown): {
-    success: false;
-    error: LoginError;
-  } {
-    console.error('Login error:', error);
-
-    if (error instanceof Error) {
-      if (error.message.includes('Invalid challenge')) {
-        return { success: false, error: 'INVALID_CREDENTIALS' };
-      }
-      if (
-        error.message.includes('NetworkError') ||
-        error.message.includes('Failed to fetch')
-      ) {
-        return { success: false, error: 'NETWORK_ERROR' };
-      }
-      return { success: false, error: 'SERVER_ERROR' };
+  /**
+   * Validates server public credentials and generates session key
+   * Returns the mutual authenticator
+   */
+  async getVerifyData(
+    client: SRPClientInstance,
+    serverData: string
+  ): Promise<string> {
+    const [saltHex, BHex] = serverData.split(':');
+    if (!saltHex || !BHex) {
+      throw new Error('srp: invalid server public key');
     }
 
-    return { success: false, error: 'SERVER_ERROR' };
-  }
-
-  private async initiateAuthentication() {
-    try {
-      const response = (await this.request('/v1/srp/challenge', 'POST', {
-        I: this.I.toString(),
-        A: this.A.toString(),
-      })) as { s: string; B: string };
-
-      if (!response.s || !response.B) {
-        throw new Error('Invalid challenge');
-      }
-
-      this.s = response.s;
-      this.B = BigInt(`0x${response.B}`);
-    } catch (error) {
-      throw error;
+    const salt = this.hexToUint8Array(saltHex);
+    if (!salt) {
+      throw new Error('srp: invalid server public key');
     }
-  }
-  private generatePublicKey(): bigint {
-    // g^a % N
-    return modPow(this.g, this.a, this.N);
+
+    const B = BigInt(`0x${BHex}`);
+    if (B === 0n) {
+      throw new Error('srp: invalid server public key');
+    }
+
+    // Verify B % N != 0
+    if (B % this.pf.N === 0n) {
+      throw new Error('srp: invalid server public key');
+    }
+
+    // Calculate u = H(pad(A), pad(B))
+    const paddedA = this.pad(this.bigIntToUint8Array(client.xA), this.pf.n);
+    const paddedB = this.pad(this.bigIntToUint8Array(B), this.pf.n);
+    const u = await this.hashbigint(paddedA, paddedB);
+    if (u === 0n) {
+      throw new Error('srp: invalid server public key');
+    }
+
+    // Calculate x = H(i, p, salt)
+    const x = await this.hashbigint(client.i, client.p, salt);
+
+    // Calculate S = ((B - kg^x) ^ (a + ux)) % N
+    const gx = modPow(this.pf.g, x, this.pf.N);
+    const kgx = (client.k * gx) % this.pf.N;
+    const t1 = (B + this.pf.N - kgx) % this.pf.N; // Use + N - kgx instead of direct subtraction
+    const t2 = (client.a + u * x) % (this.pf.N - 1n); // Reduce exponent modulo (N-1)
+    const S = modPow(t1, t2, this.pf.N); // even though the math changed a bit, S remains the same
+
+    // Calculate K = H(S)
+    client.xK = await this.hashbyte(this.bigIntToUint8Array(S));
+
+    // Calculate M = H(K, A, B, i, salt, N, g)
+    client.xM = await this.hashbyte(
+      client.xK,
+      this.bigIntToUint8Array(client.xA),
+      this.bigIntToUint8Array(B),
+      client.i,
+      salt,
+      this.bigIntToUint8Array(this.pf.N),
+      this.bigIntToUint8Array(this.pf.g)
+    );
+
+    // Return M as hex string
+    return Array.from(client.xM)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 
-  private generatePrivateKey(bitLength: number = 256): bigint {
-    const byteLength = bitLength / 8;
-    const randomBytes = new Uint8Array(byteLength);
-    crypto.getRandomValues(randomBytes);
-
+  /**
+   * Generates a random bigint of specified bits
+   */
+  private async randBigInt(bits: number): Promise<bigint> {
+    const bytes = Math.ceil(bits / 8);
+    const array = new Uint8Array(bytes);
+    crypto.getRandomValues(array);
     return BigInt(
       '0x' +
-        Array.from(randomBytes, (byte) =>
-          byte.toString(16).padStart(2, '0')
-        ).join('')
+        Array.from(array)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
     );
   }
 
-  private async hash(data: string | object): Promise<string> {
-    try {
-      const encoder = new TextEncoder();
-      const dataBuffer = encoder.encode(JSON.stringify(data));
-      const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-    } catch (error) {
-      throw new Error(`Hashing failed: ${error}`);
-    }
+  /**
+   * Pads a Uint8Array to a specified length
+   */
+  private pad(input: Uint8Array, length: number): Uint8Array {
+    const result = new Uint8Array(length);
+    result.set(input, length - input.length);
+    return result;
   }
 
-  private async request(
-    url: string,
-    method: 'GET' | 'POST',
-    body?: any,
-    headers: Record<string, string> = {}
-  ) {
-    try {
-      const defaultHeaders = {
-        'Content-Type': 'application/json',
-        ...headers,
-      };
-      const config: RequestInit = {
-        method,
-        headers: defaultHeaders,
-        ...(body && method === 'POST' && { body: JSON.stringify(body) }),
-      };
-      const response = await fetch(url, config);
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(
-          `HTTP error! status: ${response.status}, message: ${errorBody}`
-        );
-      }
-      return await response.json();
-    } catch (error) {
-      throw error;
+  /**
+   * Converts a bigint to Uint8Array
+   */
+  private bigIntToUint8Array(value: bigint): Uint8Array {
+    let hex = value.toString(16);
+    if (hex.length % 2) hex = '0' + hex;
+    const len = hex.length / 2;
+    const result = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      result[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
     }
+    return result;
+  }
+
+  /**
+   * Hashes a series of Uint8Arrays and returns the result as a bigint
+   */
+  private async hashbigint(...arrays: Uint8Array[]): Promise<bigint> {
+    const hash = await this.hashbyte(...arrays);
+    return BigInt(
+      '0x' +
+        Array.from(hash)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
+    );
+  }
+
+  /**
+   * Concatenates and hashes multiple Uint8Arrays
+   */
+  private async hashbyte(...arrays: Uint8Array[]): Promise<Uint8Array> {
+    const concatenated = this.concatUint8Arrays(...arrays);
+    const hashBuffer = await crypto.subtle.digest(this.h, concatenated);
+    return new Uint8Array(hashBuffer);
+  }
+
+  private concatUint8Arrays(...arrays: Uint8Array[]): Uint8Array {
+    const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
+    const result = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const arr of arrays) {
+      result.set(arr, offset);
+      offset += arr.length;
+    }
+    return result;
+  }
+
+  /**
+   * Convert hex string to Uint8Array
+   */
+  private hexToUint8Array(hex: string): Uint8Array {
+    if (hex.length % 2 !== 0) {
+      hex = '0' + hex;
+    }
+    const result = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      result[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+    }
+    return result;
   }
 }

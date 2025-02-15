@@ -17,10 +17,10 @@
 </form>
 
 <script>
-  import SRPClient from '../lib/srp.client';
+  import { SRPAuthClient } from '../lib/auth.client';
+  import { DefaultPrimeField } from '../lib/srp.client';
 
-  const client = new SRPClient();
-  client.init();
+  const client = new SRPAuthClient('', DefaultPrimeField);
 
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('login-form');
@@ -47,7 +47,6 @@
       }
 
       errorMessage.style.display = 'none';
-      console.log(`Username: ${username}, Password: ${password}`);
 
       const result = await client.login(username, password);
       if (!result.success) {
@@ -55,7 +54,7 @@
         errorMessage.style.display = 'block';
       } else {
         errorMessage.style.display = 'none';
-        alert("logged in!")
+        alert('logged in!');
       }
     });
   });

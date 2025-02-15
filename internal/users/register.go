@@ -2,6 +2,8 @@ package users
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 
@@ -15,10 +17,16 @@ func (s *UserService) Register(ctx context.Context, username string, verifier st
 		return "", fmt.Errorf("failed to create new uuid: %w", err)
 	}
 
+	hash := sha256.New()
+	hash.Write([]byte(username))
+	hashInBytes := hash.Sum(nil)
+	hashedUsername := hex.EncodeToString(hashInBytes)
+
 	if err = s.db.CreateUser(ctx, db_gen.CreateUserParams{
 		ID:              id.String(),
 		Username:        username,
 		EncodedVerifier: verifier,
+		HashedUsername:  hashedUsername,
 	}); err != nil {
 		return "", fmt.Errorf("failed to create user in db: %w", err)
 	}

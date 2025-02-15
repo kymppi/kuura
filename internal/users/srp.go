@@ -2,7 +2,6 @@ package users
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -13,12 +12,10 @@ import (
 
 // validates the client and returns server proof
 func (s *UserService) ClientVerify(ctx context.Context, ih string, data string) (string, error) {
-	uidBytes, err := hex.DecodeString(ih)
+	uid, err := s.db.GetUserIDFromUsernameHash(ctx, ih)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode string: %w", err)
+		return "", fmt.Errorf("failed to get uid from identity hash: %w", err)
 	}
-
-	uid := string(uidBytes)
 
 	row, err := s.db.GetAndDeleteSRPServer(ctx, uid)
 	if err != nil {
@@ -44,15 +41,11 @@ func (s *UserService) ClientBegin(ctx context.Context, creds string) (string, er
 		return "", fmt.Errorf("failed to begin server: %w", err)
 	}
 
-	uidBytes, err := hex.DecodeString(ih)
+	uid, err := s.db.GetUserIDFromUsernameHash(ctx, ih)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode string: %w", err)
+		return "", fmt.Errorf("failed to get uid from identity hash: %w", err)
 	}
 
-	uid := string(uidBytes)
-
-	// lookup the user db using "I" as the key and
-	// fetch salt, verifier etc.
 	encodedVerifier, err := s.db.GetSRPVerifier(ctx, uid)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch user verifier and salt: %w", err)
@@ -68,7 +61,6 @@ func (s *UserService) ClientBegin(ctx context.Context, creds string) (string, er
 		return "", fmt.Errorf("failed to compute the shared secret: %w", err)
 	}
 
-	// Generate the credentials to send to client
 	creds = srv.Credentials()
 
 	if err = s.db.SaveSRPServer(ctx, db_gen.SaveSRPServerParams{

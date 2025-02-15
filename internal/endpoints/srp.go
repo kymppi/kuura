@@ -100,7 +100,7 @@ func V1_SRP_ClientBegin(logger *slog.Logger, userService *users.UserService) htt
 
 type srpVerifyRequest struct {
 	Data     string `json:"data"`
-	Identity string `json:"identity"`
+	IdentityHash string `json:"identity"`
 }
 
 func (r *srpVerifyRequest) Valid(ctx context.Context) (problems map[string]string) {
@@ -109,7 +109,7 @@ func (r *srpVerifyRequest) Valid(ctx context.Context) (problems map[string]strin
 	if r.Data == "" {
 		problems["data"] = "'data' cannot be empty"
 	}
-	if r.Identity == "" {
+	if r.IdentityHash == "" {
 		problems["identity"] = "'identity' cannot be empty"
 	}
 
@@ -143,7 +143,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService) ht
 				return
 			}
 
-			serverProof, err := userService.ClientVerify(ctx, payload.Identity, payload.Data)
+			serverProof, err := userService.ClientVerify(ctx, payload.IdentityHash, payload.Data)
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)

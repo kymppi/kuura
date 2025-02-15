@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"crypto"
 	"fmt"
 	"log/slog"
 
@@ -58,7 +59,7 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			s, err := srp.New(2048)
+			s, err := srp.NewWithHash(crypto.SHA256, 4096)
 			if err != nil {
 				panic(err)
 			}

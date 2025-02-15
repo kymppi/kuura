@@ -1,6 +1,6 @@
 -- name: CreateUser :exec
-INSERT INTO users (id, username, encoded_verifier)
-VALUES ($1, $2, $3);
+INSERT INTO users (id, username, hashed_username, encoded_verifier)
+VALUES ($1, $2, $3, $4);
 
 -- name: GetSRPVerifier :one
 SELECT encoded_verifier FROM users WHERE id = $1;
@@ -13,6 +13,10 @@ RETURNING *;
 -- name: GetUserIDFromUsername :one
 SELECT id FROM users
 WHERE username = $1;
+
+-- name: GetUserIDFromUsernameHash :one
+SELECT id FROM users
+WHERE hashed_username = $1;
 
 -- name: SaveSRPServer :exec
 INSERT INTO user_srp (uid, encoded_server, expires_at)
