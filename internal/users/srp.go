@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -32,6 +33,8 @@ func (s *UserService) ClientVerify(ctx context.Context, ih string, data string) 
 		return "", fmt.Errorf("unauthorized")
 	}
 
+	s.logger.Info("User logged in", slog.String("uid", uid))
+
 	return proof, nil
 }
 
@@ -45,6 +48,8 @@ func (s *UserService) ClientBegin(ctx context.Context, creds string) (string, er
 	if err != nil {
 		return "", fmt.Errorf("failed to get uid from identity hash: %w", err)
 	}
+
+	s.logger.Info("User initiated login", slog.String("uid", uid))
 
 	encodedVerifier, err := s.db.GetSRPVerifier(ctx, uid)
 	if err != nil {

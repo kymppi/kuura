@@ -152,6 +152,20 @@ export class SRPClient {
       .join('');
   }
 
+  async verifyServer(
+    client: SRPClientInstance,
+    proof: string
+  ): Promise<boolean> {
+    if (!client.xK) return false;
+    if (!client.xM) return false;
+
+    const hash = await this.hashbyte(client.xK, client.xM);
+
+    const proofBytes = this.hexToUint8Array(proof);
+
+    return this.constantTimeEqual(proofBytes, hash);
+  }
+
   /**
    * Generates a random bigint of specified bits
    */
@@ -235,5 +249,17 @@ export class SRPClient {
       result[i / 2] = parseInt(hex.slice(i, i + 2), 16);
     }
     return result;
+  }
+
+  private constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    let result = 0;
+    for (let i = 0; i < a.length; i++) {
+      result |= a[i] ^ b[i];
+    }
+    return result === 0;
   }
 }

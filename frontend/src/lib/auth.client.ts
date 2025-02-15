@@ -7,7 +7,8 @@ import {
 export type LoginError =
   | 'INVALID_CREDENTIALS'
   | 'SERVER_ERROR'
-  | 'NETWORK_ERROR';
+  | 'NETWORK_ERROR'
+  | 'SUSPICIOUS_SERVER';
 
 interface AuthenticationResponse {
   data: string;
@@ -15,7 +16,7 @@ interface AuthenticationResponse {
 
 interface VerificationResponse {
   success: boolean;
-  message?: string;
+  data: string;
 }
 
 export class SRPAuthClient {
@@ -41,7 +42,7 @@ export class SRPAuthClient {
       if (!authResponse.success) {
         return { success: false, error: 'INVALID_CREDENTIALS' };
       }
-      
+
       // Step 2: Process server challenge
       const verifyResponse = await this.processServerChallenge(
         authResponse.data
@@ -49,6 +50,16 @@ export class SRPAuthClient {
       if (!verifyResponse.success) {
         return { success: false, error: 'INVALID_CREDENTIALS' };
       }
+
+      if (!this.currentClient)
+        return { success: false, error: 'SUSPICIOUS_SERVER' };
+
+      const serverOk = await this.srpClient.verifyServer(
+        this.currentClient,
+        verifyResponse.data
+      );
+
+      if (!serverOk) return { success: false, error: 'SUSPICIOUS_SERVER' };
 
       return { success: true };
     } catch (error) {
@@ -89,8 +100,8 @@ export class SRPAuthClient {
 
   private async processServerChallenge(
     serverData: string
-  ): Promise<{ success: boolean }> {
-    if (!this.currentClient) return { success: false };
+  ): Promise<{ success: boolean; data: string }> {
+    if (!this.currentClient) return { success: false, data: '' };
 
     const payload = await this.srpClient.getVerifyData(
       this.currentClient,
@@ -107,7 +118,7 @@ export class SRPAuthClient {
         }
       );
 
-      return { success: !!response?.success };
+      return { success: !!response?.success, data: response.data };
     } catch (error) {
       console.error('Challenge verification failed:', error);
       throw error;
