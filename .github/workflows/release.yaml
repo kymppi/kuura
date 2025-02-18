@@ -33,6 +33,21 @@ jobs:
         uses: sqlc-dev/setup-sqlc@v4
         with:
           sqlc-version: '1.27.0'
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: 'frontend'
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6.2.1
         with:
