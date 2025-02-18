@@ -3,7 +3,7 @@ module github.com/kymppi/kuura
 go 1.23.3
 
 require (
-	github.com/caarlos0/env/v11 v11.2.2
+	github.com/caarlos0/env/v11 v11.3.1
 	github.com/lestrrat-go/jwx/v2 v2.1.3
 	github.com/rubenv/sql-migrate v1.7.1
 	github.com/stretchr/testify v1.10.0
