@@ -16,6 +16,8 @@
   <button type="submit">Login</button>
 </form>
 
+<button id="refresh-tokens">Refresh tokens</button>
+
 <script>
   import { SRPAuthClient } from '../lib/auth.client';
   import { DefaultPrimeField } from '../lib/srp.client';
@@ -67,4 +69,29 @@
       }
     });
   });
+
+  document
+    .getElementById('refresh-tokens')!
+    .addEventListener('click', async function () {
+      try {
+        const response = await fetch('/v1/user/access', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Tokens refreshed successfully:', data);
+        } else {
+          console.error('Failed to refresh tokens:', response.status);
+          alert(`Failed to refresh tokens: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.error('Error refreshing tokens:', error);
+        alert('An error occurred while refreshing tokens');
+      }
+    });
 </script>
