@@ -30,6 +30,7 @@ export class SRPAuthClient {
   }
 
   public async login(
+    loginTarget: string,
     username: string,
     password: string
   ): Promise<{ success: true } | { success: false; error: LoginError }> {
@@ -45,7 +46,8 @@ export class SRPAuthClient {
 
       // Step 2: Process server challenge
       const verifyResponse = await this.processServerChallenge(
-        authResponse.data
+        authResponse.data,
+        loginTarget
       );
       if (!verifyResponse.success) {
         return { success: false, error: 'INVALID_CREDENTIALS' };
@@ -99,7 +101,8 @@ export class SRPAuthClient {
   }
 
   private async processServerChallenge(
-    serverData: string
+    serverData: string,
+    loginTarget: string
   ): Promise<{ success: boolean; data: string }> {
     if (!this.currentClient) return { success: false, data: '' };
 
@@ -115,6 +118,7 @@ export class SRPAuthClient {
         {
           identity: this.srpClient.getIdentity(this.currentClient),
           data: payload,
+          target_service: loginTarget,
         }
       );
 

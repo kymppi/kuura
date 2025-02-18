@@ -34,8 +34,9 @@ func runServices(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	var (
-		name     string
-		audience string
+		name      string
+		audience  string
+		apiDomain string
 	)
 
 	cmd := &cobra.Command{
@@ -53,7 +54,7 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 			serviceManager := kuura.NewServiceManager(queries)
 
-			id, err := serviceManager.CreateService(ctx, name, audience)
+			id, err := serviceManager.CreateService(ctx, name, audience, apiDomain)
 			if err != nil {
 				logger.Error("Failed to create service", slog.String("error", err.Error()))
 				return
@@ -67,9 +68,11 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Name of the service")
 	cmd.Flags().StringVarP(&audience, "audience", "a", "", "JWT audience for the service")
+	cmd.Flags().StringVarP(&apiDomain, "apiDomain", "d", "", "The domain which should be used in the access_token cookie")
 
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("audience")
+	cmd.MarkFlagRequired("apiDomain")
 
 	return cmd
 }

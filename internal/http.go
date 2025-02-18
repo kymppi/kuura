@@ -32,6 +32,7 @@ func newHTTPServer(
 		m2mService,
 		frontendFS,
 		userService,
+		config.PUBLIC_KUURA_DOMAIN,
 	)
 
 	var handler http.Handler = mux

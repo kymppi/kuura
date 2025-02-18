@@ -12,18 +12,24 @@ import (
 )
 
 const createAppService = `-- name: CreateAppService :exec
-INSERT INTO services (id, jwt_audience, name)
-VALUES ($1, $2, $3)
+INSERT INTO services (id, jwt_audience, name, api_domain)
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateAppServiceParams struct {
 	ID          pgtype.UUID `json:"id"`
 	JwtAudience string      `json:"jwt_audience"`
 	Name        string      `json:"name"`
+	ApiDomain   string      `json:"api_domain"`
 }
 
 func (q *Queries) CreateAppService(ctx context.Context, arg CreateAppServiceParams) error {
-	_, err := q.db.Exec(ctx, createAppService, arg.ID, arg.JwtAudience, arg.Name)
+	_, err := q.db.Exec(ctx, createAppService,
+		arg.ID,
+		arg.JwtAudience,
+		arg.Name,
+		arg.ApiDomain,
+	)
 	return err
 }
 
@@ -38,7 +44,7 @@ func (q *Queries) DeleteAppService(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getAppService = `-- name: GetAppService :one
-SELECT id, jwt_audience, created_at, modified_at, name, description FROM services
+SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain FROM services
 WHERE id = $1
 `
 
@@ -52,12 +58,13 @@ func (q *Queries) GetAppService(ctx context.Context, id pgtype.UUID) (Service, e
 		&i.ModifiedAt,
 		&i.Name,
 		&i.Description,
+		&i.ApiDomain,
 	)
 	return i, err
 }
 
 const getAppServices = `-- name: GetAppServices :many
-SELECT id, jwt_audience, created_at, modified_at, name, description FROM services
+SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain FROM services
 `
 
 func (q *Queries) GetAppServices(ctx context.Context) ([]Service, error) {
@@ -76,6 +83,7 @@ func (q *Queries) GetAppServices(ctx context.Context) ([]Service, error) {
 			&i.ModifiedAt,
 			&i.Name,
 			&i.Description,
+			&i.ApiDomain,
 		); err != nil {
 			return nil, err
 		}

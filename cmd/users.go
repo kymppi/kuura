@@ -59,6 +59,12 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
+			jwkManager, err := kuura.InitializeJWKManager(ctx, logger, config, queries)
+			if err != nil {
+				cmd.PrintErrf("Failed to initialize jwk manager: %s", err)
+				return
+			}
+
 			s, err := srp.NewWithHash(crypto.SHA256, 4096)
 			if err != nil {
 				panic(err)
@@ -71,7 +77,7 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 			_, vh := v.Encode()
 
-			userService := users.NewUserService(logger, queries)
+			userService := users.NewUserService(logger, queries, config.JWT_ISSUER, jwkManager)
 
 			uid, err := userService.Register(ctx, username, vh)
 			if err != nil {

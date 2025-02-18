@@ -48,7 +48,16 @@
 
       errorMessage.style.display = 'none';
 
-      const result = await client.login(username, password);
+      const urlParams = new URLSearchParams(window.location.search);
+      const serviceId = urlParams.get('service');
+
+      if (!serviceId) {
+        errorMessage.textContent = 'Missing target service!';
+        errorMessage.style.display = 'block';
+        return;
+      }
+
+      const result = await client.login(serviceId, username, password);
       if (!result.success) {
         errorMessage.textContent = result.error;
         errorMessage.style.display = 'block';

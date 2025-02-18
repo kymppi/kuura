@@ -12,30 +12,30 @@ import (
 )
 
 // validates the client and returns server proof
-func (s *UserService) ClientVerify(ctx context.Context, ih string, data string) (string, error) {
-	uid, err := s.db.GetUserIDFromUsernameHash(ctx, ih)
+func (s *UserService) ClientVerify(ctx context.Context, ih string, data string) (proof string, uid string, err error) {
+	uid, err = s.db.GetUserIDFromUsernameHash(ctx, ih)
 	if err != nil {
-		return "", fmt.Errorf("failed to get uid from identity hash: %w", err)
+		return "", "", fmt.Errorf("failed to get uid from identity hash: %w", err)
 	}
 
 	row, err := s.db.GetAndDeleteSRPServer(ctx, uid)
 	if err != nil {
-		return "", fmt.Errorf("failed to retrieve srp server: %w", err)
+		return "", "", fmt.Errorf("failed to retrieve srp server: %w", err)
 	}
 
 	srv, err := srp.UnmarshalServer(string(row.EncodedServer))
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal server: %w", err)
+		return "", "", fmt.Errorf("failed to unmarshal server: %w", err)
 	}
 
 	proof, ok := srv.ClientOk(data)
 	if !ok {
-		return "", fmt.Errorf("unauthorized")
+		return "", "", fmt.Errorf("unauthorized")
 	}
 
 	s.logger.Info("User logged in", slog.String("uid", uid))
 
-	return proof, nil
+	return proof, uid, nil
 }
 
 func (s *UserService) ClientBegin(ctx context.Context, creds string) (string, error) {
