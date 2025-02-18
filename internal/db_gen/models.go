@@ -49,10 +49,38 @@ type Service struct {
 	ModifiedAt  time.Time          `json:"modified_at"`
 	Name        string             `json:"name"`
 	Description pgtype.Text        `json:"description"`
+	ApiDomain   string             `json:"api_domain"`
 }
 
 type ServiceKeyState struct {
 	ServiceID    pgtype.UUID `json:"service_id"`
 	JwkPrivateID string      `json:"jwk_private_id"`
 	Status       string      `json:"status"`
+}
+
+type User struct {
+	ID              string             `json:"id"`
+	Username        string             `json:"username"`
+	HashedUsername  string             `json:"hashed_username"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	LastLoginAt     pgtype.Timestamptz `json:"last_login_at"`
+	Disabled        pgtype.Bool        `json:"disabled"`
+	EncodedVerifier string             `json:"encoded_verifier"`
+	Roles           []string           `json:"roles"`
+}
+
+type UserSession struct {
+	ID                  string             `json:"id"`
+	UserID              string             `json:"user_id"`
+	ServiceID           pgtype.UUID        `json:"service_id"`
+	RefreshTokenHash    string             `json:"refresh_token_hash"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	LastAuthenticatedAt pgtype.Timestamptz `json:"last_authenticated_at"`
+}
+
+type UserSrp struct {
+	Uid           string             `json:"uid"`
+	EncodedServer []byte             `json:"encoded_server"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
 }

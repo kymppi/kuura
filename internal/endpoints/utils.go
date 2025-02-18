@@ -16,14 +16,6 @@ func encode[T any](w http.ResponseWriter, _ *http.Request, status int, v T) erro
 	return nil
 }
 
-func decode[T any](r *http.Request) (T, error) {
-	var v T
-	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
-		return v, fmt.Errorf("decode json: %w", err)
-	}
-	return v, nil
-}
-
 // Validator is an object that can be validated.
 type Validator interface {
 	// Valid checks the object and returns any

@@ -23,7 +23,7 @@ func NewServiceManager(databaseQueries *db_gen.Queries) *ServiceManager {
 	}
 }
 
-func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudience string) (*uuid.UUID, error) {
+func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudience string, apiDomain string) (*uuid.UUID, error) {
 	id, err := uuid.NewV7()
 
 	if err != nil {
@@ -34,6 +34,7 @@ func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudi
 		ID:          utils.UUIDToPgType(id),
 		JwtAudience: jwtAudience,
 		Name:        name,
+		ApiDomain:   apiDomain,
 	})
 
 	if err != nil {

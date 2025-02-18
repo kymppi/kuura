@@ -3,6 +3,7 @@ package main
 //go:generate sqlc generate
 
 import (
+	"embed"
 	"fmt"
 	"os"
 
@@ -14,6 +15,11 @@ var (
 	GitSHA string
 	Branch string
 )
+
+//go:generate sh -c "cd frontend && pnpm install"
+//go:generate sh -c "cd frontend && pnpm run build"
+//go:embed frontend/dist/*
+var frontendDist embed.FS
 
 func main() {
 	cmd.GitSHA = GitSHA
@@ -32,6 +38,6 @@ func main() {
 	loggerManager := kuura.NewLogger(loggerConfig)
 	logger := loggerManager.Get()
 
-	rootCmd := cmd.NewRootCommand(config, logger)
+	rootCmd := cmd.NewRootCommand(config, logger, frontendDist)
 	rootCmd.Execute()
 }
