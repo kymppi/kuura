@@ -4,7 +4,7 @@ go 1.23.3
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
-	github.com/lestrrat-go/jwx/v2 v2.1.3
+	github.com/lestrrat-go/jwx/v2 v2.1.4
 	github.com/rubenv/sql-migrate v1.7.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.33.0
@@ -14,7 +14,7 @@ require (
 require (
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
