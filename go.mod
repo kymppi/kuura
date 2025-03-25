@@ -44,7 +44,7 @@ require (
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.7.4
 	github.com/manifoldco/promptui v0.9.0
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/opencoff/go-srp v0.6.3
