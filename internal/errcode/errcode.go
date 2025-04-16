@@ -1,5 +1,7 @@
 package errcode
 
+import "net/http"
+
 type ErrorCode string
 
 type ErrorDetail struct {
@@ -26,13 +28,17 @@ const (
 	// YYYY = Error
 
 	// Category 00: General
-	InternalServerError  ErrorCode = "MH000001"
-	Timeout              ErrorCode = "MH000002"
-	InvalidArgumentError ErrorCode = "MH000003"
+	InternalServerError  ErrorCode = "K0001"
+	Timeout              ErrorCode = "K0002"
+	InvalidArgumentError ErrorCode = "K0003"
 
 	// Category 01: M2M
 
 	// Category 02: Users
+	MissingCookie ErrorCode = "K0201"
+
+	// Category 03: JWKS
+	InvalidServiceId ErrorCode = "K0301"
 )
 
 var errorDetailsMap = map[ErrorCode]ErrorDetail{
@@ -55,5 +61,17 @@ var errorDetailsMap = map[ErrorCode]ErrorDetail{
 
 	// Category 01: M2M
 
-	// Category 02: Users
+	// Category 02:
+	MissingCookie: {
+		Code:        MissingCookie,
+		StatusCode:  http.StatusBadRequest,
+		Description: "Missing one or more required cookies.",
+	},
+
+	// Category 03: JWKS
+	InvalidServiceId: {
+		Code:        InvalidServiceId,
+		StatusCode:  http.StatusBadRequest,
+		Description: "The service_id is not a valid uuid.",
+	},
 }

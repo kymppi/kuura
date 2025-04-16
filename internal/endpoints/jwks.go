@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/kymppi/kuura/internal/errcode"
+	"github.com/kymppi/kuura/internal/errs"
 	"github.com/kymppi/kuura/internal/jwks"
 )
 
@@ -17,22 +19,17 @@ func V1JwksHandler(logger *slog.Logger, jwkManager *jwks.JWKManager) http.Handle
 
 			serviceId, err := uuid.Parse(r.PathValue("serviceId"))
 			if err != nil {
-				http.Error(w, "Invalid serviceId format", http.StatusBadRequest)
+				handleErr(w, r, logger, errs.New(errcode.InvalidServiceId, err))
 				return
 			}
 
 			keys, err := jwkManager.GetJWKS(ctx, serviceId)
 			if err != nil {
-				logger.Error("failed to get JWKS", slog.String("serviceId", serviceId.String()), slog.String("error", err.Error()))
-				http.Error(w, "Failed to retrieve JWKS", http.StatusInternalServerError)
+				handleErr(w, r, logger, err)
 				return
 			}
 
-			if err := encode(w, r, http.StatusOK, keys); err != nil {
-				logger.Error("failed to encode JWKS response", slog.String("error", err.Error()))
-				http.Error(w, "Failed to encode JWKS response", http.StatusInternalServerError)
-				return
-			}
+			safeEncode(w, r, logger, http.StatusOK, keys)
 		},
 	)
 }

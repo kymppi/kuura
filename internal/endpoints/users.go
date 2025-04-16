@@ -2,12 +2,13 @@ package endpoints
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/kymppi/kuura/internal/errcode"
+	"github.com/kymppi/kuura/internal/errs"
 	"github.com/kymppi/kuura/internal/users"
 )
 
@@ -34,33 +35,15 @@ func V1_SRP_ClientBegin(logger *slog.Logger, userService *users.UserService) htt
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			payload, problems, err := decodeValid[*srpClientBegin](r)
+			payload, err := decodeValid[*srpClientBegin](r)
 			if err != nil {
-				if problems != nil {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusBadRequest)
-					if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
-						"error":    "validation failed",
-						"problems": problems,
-					}); encodeErr != nil {
-						logger.Error("failed to encode validation error", slog.String("error", encodeErr.Error()))
-					}
-				} else {
-					http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-				}
+				handleErr(w, r, logger, err)
 				return
 			}
 
 			value, err := userService.ClientBegin(ctx, payload.Data)
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				logger.Error("User got an invalid challenge", slog.String("error", err.Error()))
-				if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": "invalid challenge",
-				}); encodeErr != nil {
-					logger.Error("failed to encode validation error", slog.String("error", encodeErr.Error()))
-				}
+				handleErr(w, r, logger, err)
 				return
 			}
 
@@ -68,11 +51,7 @@ func V1_SRP_ClientBegin(logger *slog.Logger, userService *users.UserService) htt
 				Data: value,
 			}
 
-			if err := encode(w, r, http.StatusOK, data); err != nil {
-				logger.Error("failed to encode response", slog.String("error", err.Error()))
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-				return
-			}
+			safeEncode(w, r, logger, http.StatusOK, data)
 		},
 	)
 }
@@ -113,59 +92,27 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			payload, problems, err := decodeValid[*srpVerifyRequest](r)
+			payload, err := decodeValid[*srpVerifyRequest](r)
 			if err != nil {
-				if problems != nil {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusBadRequest)
-					if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
-						"error":    "validation failed",
-						"problems": problems,
-					}); encodeErr != nil {
-						logger.Error("failed to encode validation error", slog.String("error", encodeErr.Error()))
-					}
-				} else {
-					http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-				}
+				handleErr(w, r, logger, err)
 				return
 			}
 
 			serverProof, uid, err := userService.ClientVerify(ctx, payload.IdentityHash, payload.Data)
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				logger.Error("User got an invalid premaster", slog.String("error", err.Error()))
-				if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": "invalid challenge",
-				}); encodeErr != nil {
-					logger.Error("failed to encode validation error", slog.String("error", encodeErr.Error()))
-				}
+				handleErr(w, r, logger, err)
 				return
 			}
 
 			sessionId, refreshToken, err := userService.CreateSession(ctx, uid, uuid.MustParse(payload.TargetService))
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				logger.Error("Failed to create a user session", slog.String("uid", uid), slog.String("error", err.Error()))
-				if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": "internal server error",
-				}); encodeErr != nil {
-					logger.Error("failed to encode client error", slog.String("error", encodeErr.Error()))
-				}
+				handleErr(w, r, logger, err)
 				return
 			}
 
 			accessToken, refreshToken, serviceDomain, err := userService.CreateAccessToken(ctx, sessionId, refreshToken)
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				logger.Error("Failed to create a user access token", slog.String("uid", uid), slog.String("error", err.Error()))
-				if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": "internal server error",
-				}); encodeErr != nil {
-					logger.Error("failed to encode client error", slog.String("error", encodeErr.Error()))
-				}
+				handleErr(w, r, logger, err)
 				return
 			}
 
@@ -207,11 +154,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 				Data:    serverProof,
 			}
 
-			if err := encode(w, r, http.StatusOK, data); err != nil {
-				logger.Error("failed to encode response", slog.String("error", err.Error()))
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-				return
-			}
+			safeEncode(w, r, logger, http.StatusOK, data)
 		},
 	)
 }
@@ -221,21 +164,21 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 		// read session_id, refresh_token cookies
 		sessionCookie, err := r.Cookie("session_id")
 		if err != nil {
-			http.Error(w, "'session_id' cookie not found", http.StatusBadRequest)
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, errors.New("'session_id' cookie not found")).WithMetadata("cookie", "session_id"))
 			return
 		}
 		sessionId := sessionCookie.Value
 
 		refreshCookie, err := r.Cookie("refresh_token")
 		if err != nil {
-			http.Error(w, "'refresh_token' cookie not found", http.StatusBadRequest)
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, errors.New("'refresh_token' cookie not found")).WithMetadata("cookie", "refresh_token"))
 			return
 		}
 		refreshToken := refreshCookie.Value
 
 		accessToken, refreshToken, serviceDomain, err := userService.CreateAccessToken(r.Context(), sessionId, refreshToken)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to refresh access token: %v", err), http.StatusInternalServerError)
+			handleErr(w, r, logger, err)
 			return
 		}
 
@@ -272,13 +215,8 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 			Domain:   publicKuuraDomain,
 		})
 
-		resp := map[string]any{
+		safeEncode(w, r, logger, http.StatusOK, map[string]any{
 			"success": true,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			logger.Error("failed to encode response", slog.String("error", err.Error()))
-		}
+		})
 	}
 }

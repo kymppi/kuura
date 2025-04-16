@@ -2,8 +2,6 @@ package endpoints
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -44,38 +42,22 @@ func V1CreateM2MSession(logger *slog.Logger, m2mService *m2m.M2MService) http.Ha
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, problems, err := decodeValid[*v1CreateM2MSessionRequest](r)
+		data, err := decodeValid[*v1CreateM2MSessionRequest](r)
 		if err != nil {
-			if problems != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
-					"error":    "validation failed",
-					"problems": problems,
-				}); encodeErr != nil {
-					logger.Error("failed to encode validation error", slog.String("error", encodeErr.Error()))
-				}
-			} else {
-				http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-			}
+			handleErr(w, r, logger, err)
 			return
 		}
 
 		sessionId, initialToken, err := m2mService.CreateSession(r.Context(), uuid.MustParse(data.ServiceId), data.SubjectId, data.Template)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to create session: %v", err), http.StatusInternalServerError)
+			handleErr(w, r, logger, err)
 			return
 		}
 
-		resp := response{
+		safeEncode(w, r, logger, http.StatusCreated, response{
 			SessionId:    sessionId,
 			InitialToken: initialToken,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			logger.Error("failed to encode response", slog.String("error", err.Error()))
-		}
+		})
 	}
 }
 
@@ -104,37 +86,21 @@ func V1M2MRefreshAccessToken(logger *slog.Logger, m2mService *m2m.M2MService) ht
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, problems, err := decodeValid[*v1M2MRefreshAccessToken](r)
+		data, err := decodeValid[*v1M2MRefreshAccessToken](r)
 		if err != nil {
-			if problems != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
-					"error":    "validation failed",
-					"problems": problems,
-				}); encodeErr != nil {
-					logger.Error("failed to encode validation error", slog.String("error", encodeErr.Error()))
-				}
-			} else {
-				http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-			}
+			handleErr(w, r, logger, err)
 			return
 		}
 
 		accessToken, refreshToken, err := m2mService.CreateAccessToken(r.Context(), data.SessionId, data.RefreshToken)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to refresh access token: %v", err), http.StatusInternalServerError)
+			handleErr(w, r, logger, err)
 			return
 		}
 
-		resp := response{
+		safeEncode(w, r, logger, http.StatusOK, response{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			logger.Error("failed to encode response", slog.String("error", err.Error()))
-		}
+		})
 	}
 }
