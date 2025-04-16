@@ -52,5 +52,6 @@ WHERE id = $1;
 
 -- name: RotateM2MSessionRefreshToken :exec
 UPDATE m2m_sessions
-SET refresh_token = $1
+SET refresh_token = $1,
+    expires_at = $3
 WHERE id = $2;

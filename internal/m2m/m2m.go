@@ -93,7 +93,7 @@ func (s *M2MService) CreateSession(ctx context.Context, serviceId uuid.UUID, sub
 		SubjectID:    subjectId,
 		RefreshToken: hashedToken,
 		ExpiresAt: pgtype.Timestamptz{
-			Time:  time.Now().Add(time.Hour * 1),
+			Time:  time.Now().Add(time.Hour * 24),
 			Valid: true,
 		},
 		ID_2:      template,
@@ -167,8 +167,11 @@ func (s *M2MService) CreateAccessToken(ctx context.Context, sessionId string, re
 	err = s.db.RotateM2MSessionRefreshToken(ctx, db_gen.RotateM2MSessionRefreshTokenParams{
 		RefreshToken: hashedToken,
 		ID:           sessionId,
+		ExpiresAt: pgtype.Timestamptz{
+			Time:  time.Now().Add(time.Hour * 24),
+			Valid: true,
+		},
 	})
-
 	if err != nil {
 		return "", "", fmt.Errorf("failed to rotate refresh token: %w", err)
 	}
