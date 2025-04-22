@@ -28,7 +28,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.8.0
+        uses: sigstore/cosign-installer@v3.8.2
       - name: Install sqlc
         uses: sqlc-dev/setup-sqlc@v4
         with:
