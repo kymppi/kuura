@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	kuura "github.com/kymppi/kuura/internal"
 	"github.com/kymppi/kuura/internal/models"
+	"github.com/kymppi/kuura/internal/services"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -52,7 +53,7 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			serviceManager := kuura.NewServiceManager(queries)
+			serviceManager := services.NewServiceManager(queries)
 
 			id, err := serviceManager.CreateService(ctx, name, audience, apiDomain)
 			if err != nil {
@@ -98,7 +99,7 @@ func serviceDelete(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			serviceManager := kuura.NewServiceManager(queries)
+			serviceManager := services.NewServiceManager(queries)
 
 			err = serviceManager.DeleteService(ctx, serviceId)
 			if err != nil {
@@ -129,7 +130,7 @@ func serviceList(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			serviceManager := kuura.NewServiceManager(queries)
+			serviceManager := services.NewServiceManager(queries)
 
 			services, err := serviceManager.GetServices(ctx)
 			if err != nil {

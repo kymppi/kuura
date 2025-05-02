@@ -8,6 +8,7 @@ import (
 	"github.com/kymppi/kuura/internal/endpoints"
 	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/m2m"
+	"github.com/kymppi/kuura/internal/services"
 	"github.com/kymppi/kuura/internal/users"
 )
 
@@ -18,12 +19,14 @@ func addMainRoutes(
 	m2mService *m2m.M2MService,
 	frontendFS embed.FS,
 	userService *users.UserService,
+	serviceManager *services.ServiceManager,
 	publicKuuraDomain string,
 ) {
 	mux.Handle("/", http.NotFoundHandler())
 	mux.Handle("GET /v1/{serviceId}/jwks.json", endpoints.V1JwksHandler(logger, jwkManager))
 	mux.Handle("POST /v1/m2m/access", endpoints.V1M2MRefreshAccessToken(logger, m2mService))
 
+	mux.Handle("GET /v1/service/{serviceId}", endpoints.V1_ServiceInfo(logger, serviceManager))
 	mux.Handle("POST /v1/srp/begin", endpoints.V1_SRP_ClientBegin(logger, userService))
 	mux.Handle("POST /v1/srp/verify", endpoints.V1_SRP_ClientVerify(logger, userService, publicKuuraDomain))
 	mux.Handle("POST /v1/user/access", endpoints.V1_User_RefreshAccessToken(logger, userService, publicKuuraDomain))

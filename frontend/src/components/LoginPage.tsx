@@ -1,6 +1,36 @@
 import { Button, Form, PasswordInput, Stack, TextInput } from '@carbon/react';
+import { useEffect, useState } from 'react';
+import { getServiceInfo, type ServiceInfo } from '../lib/service.client';
 
 export default function LoginPage() {
+  const [serviceData, setServiceData] = useState<ServiceInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchServiceInfo = async () => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const serviceId = urlParams.get('service');
+
+        if (serviceId) {
+          setIsLoading(true);
+          const data = await getServiceInfo(serviceId);
+          setServiceData(data);
+        } else {
+          setError('No service ID provided');
+        }
+      } catch (err) {
+        setError('Failed to load service information');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServiceInfo();
+  }, []);
+
   return (
     <div
       style={{
@@ -14,27 +44,38 @@ export default function LoginPage() {
         backgroundPosition: 'center',
       }}
     >
-      <LoginForm />
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '32rem',
+          padding: '1rem',
+          backgroundColor: 'white',
+        }}
+      >
+        {isLoading ? (
+          <p>Loading service information...</p>
+        ) : error ? (
+          <p>{error}</p>
+        ) : serviceData ? (
+          <LoginForm info={serviceData} />
+        ) : null}
+      </div>
     </div>
   );
 }
 
-function LoginForm() {
+function LoginForm({ info }: { info: ServiceInfo }) {
   return (
-    <Form
-      style={{
-        width: '100%',
-        maxWidth: '32rem',
-        padding: '1rem',
-        backgroundColor: 'white',
-      }}
-    >
+    <Form style={{}}>
       <Stack gap={7}>
         <Stack gap="0.25rem">
-          <h1>Log in to [service]</h1>
+          <h1>Log in to {info.name}</h1>
           <p>
             Don't have an account? Contact the{' '}
-            <a href="/">[instance administrator]</a>.
+            <a href={info.contact.link} target="_blank">
+              {info.contact.name}
+            </a>
+            .
           </p>
         </Stack>
         <Stack gap="1rem">
