@@ -1,0 +1,25 @@
+@use '@carbon/react/scss/config' with ($css--font-face: false);
+@use '@carbon/react/scss/themes';
+@use '@carbon/react/scss/theme' with ($theme: themes.$white);
+
+// https://github.com/carbon-design-system/carbon/blob/main/packages/styles/docs/sass.md#components
+
+@use '@carbon/react/scss/reset';
+@use '@carbon/react/scss/zone';
+@use '@carbon/react/scss/components/button';
+// @use '@carbon/react/scss/components/combo-box';
+@use '@carbon/react/scss/components/data-table';
+@use '@carbon/react/scss/components/data-table/action';
+@use '@carbon/react/scss/components/data-table/skeleton';
+@use '@carbon/react/scss/components/data-table/sort';
+@use '@carbon/react/scss/components/inline-loading';
+// @use '@carbon/react/scss/components/dropdown';
+@use '@carbon/react/scss/components/modal';
+// @use '@carbon/react/scss/components/multiselect';
+@use '@carbon/react/scss/components/notification';
+// @use '@carbon/react/scss/components/popover';
+@use '@carbon/react/scss/components/pagination';
+@use '@carbon/react/scss/components/select';
+@use '@carbon/react/scss/components/stack';
+@use '@carbon/react/scss/components/text-input';
+@use '@carbon/react/scss/components/ui-shell';

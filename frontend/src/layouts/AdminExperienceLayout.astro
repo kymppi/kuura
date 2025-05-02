@@ -1,0 +1,26 @@
+---
+import '../assets/globals.scss';
+import Shell from '../components/Shell';
+
+const { pathname } = Astro.url;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Kuura</title>
+  </head>
+  <body>
+    <Shell
+      layoutName="Administrator interface"
+      client:load
+      activePath={pathname}
+    >
+      <slot />
+    </Shell>
+  </body>
+</html>
