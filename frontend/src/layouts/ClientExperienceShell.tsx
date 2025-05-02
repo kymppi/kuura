@@ -1,10 +1,7 @@
-import { Notification } from '@carbon/icons-react';
 import {
   Content,
   Header,
   HeaderContainer,
-  HeaderGlobalAction,
-  HeaderGlobalBar,
   HeaderMenuButton,
   HeaderMenuItem,
   HeaderName,
@@ -69,21 +66,15 @@ export default function ClientExperienceShell({
                     </HeaderSideNavItems>
                   </SideNavItems>
                 </SideNav>
-                <HeaderGlobalBar>
-                  <HeaderGlobalAction
-                    aria-label="Notifications"
-                    onClick={() => alert('notification click')}
-                  >
-                    <Notification size={20} />
-                  </HeaderGlobalAction>
-                </HeaderGlobalBar>
               </Header>
             </>
           )}
         />
       </Theme>
 
-      <Content>{children}</Content>
+      <Content style={{ height: 'calc(100dvh - 48px)', padding: 0 }}>
+        {children}
+      </Content>
     </>
   );
 }
