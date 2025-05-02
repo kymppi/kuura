@@ -1,6 +1,6 @@
 ---
 import '../assets/globals.scss';
-import Shell from '../components/Shell';
+import ClientExperienceShell from './ClientExperienceShell';
 
 const { pathname } = Astro.url;
 ---
@@ -15,8 +15,12 @@ const { pathname } = Astro.url;
     <title>Kuura</title>
   </head>
   <body>
-    <Shell layoutName="User authentication" client:load activePath={pathname}>
+    <ClientExperienceShell
+      layoutName="User authentication"
+      client:load
+      activePath={pathname}
+    >
       <slot />
-    </Shell>
+    </ClientExperienceShell>
   </body>
 </html>
