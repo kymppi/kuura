@@ -103,7 +103,7 @@ function LoginForm({ info }: { info: ServiceInfo }) {
       setInlineError(result.error);
     } else {
       setInlineError(null);
-      alert('Logged in!');
+      window.location.href = info.redirects.login;
     }
   };
 

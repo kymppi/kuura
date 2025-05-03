@@ -12,9 +12,10 @@ import (
 
 func V1_ServiceInfo(logger *slog.Logger, serviceManager *services.ServiceManager) http.Handler {
 	type response struct {
-		Name         string `json:"name"`
-		ContactName  string `json:"contact"`
-		ContactEmail string `json:"contact_email"`
+		Name          string `json:"name"`
+		ContactName   string `json:"contact"`
+		ContactEmail  string `json:"contact_email"`
+		LoginRedirect string `json:"login_redirect"`
 	}
 
 	return http.HandlerFunc(
@@ -36,9 +37,10 @@ func V1_ServiceInfo(logger *slog.Logger, serviceManager *services.ServiceManager
 			}
 
 			safeEncode(w, r, logger, http.StatusOK, response{
-				Name:         svc.Name,
-				ContactName:  svc.ContactName,
-				ContactEmail: svc.ContactEmail,
+				Name:          svc.Name,
+				ContactName:   svc.ContactName,
+				ContactEmail:  svc.ContactEmail,
+				LoginRedirect: svc.LoginRedirect,
 			})
 		},
 	)

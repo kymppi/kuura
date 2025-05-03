@@ -4,6 +4,9 @@ export interface ServiceInfo {
     name: string;
     link: string;
   };
+  redirects: {
+    login: string;
+  };
 }
 
 export const getServiceInfo = async (
@@ -18,6 +21,7 @@ export const getServiceInfo = async (
     name: string;
     contact: string;
     contact_email: string;
+    login_redirect: string;
   };
 
   return {
@@ -25,6 +29,9 @@ export const getServiceInfo = async (
     contact: {
       name: response.contact,
       link: `mailto:${response.contact_email}`,
+    },
+    redirects: {
+      login: response.login_redirect,
     },
   };
 };
