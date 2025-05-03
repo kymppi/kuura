@@ -2,7 +2,7 @@ package endpoints
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -11,6 +11,10 @@ import (
 	"github.com/kymppi/kuura/internal/errs"
 	"github.com/kymppi/kuura/internal/users"
 )
+
+const ACCESS_TOKEN_COOKIE = "kuura_access"
+const REFRESH_TOKEN_COOKIE = "kuura_refresh"
+const SESSION_COOKIE = "kuura_session"
 
 type srpClientBegin struct {
 	Data string `json:"data"`
@@ -117,7 +121,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 			}
 
 			http.SetCookie(w, &http.Cookie{
-				Name:     "refresh_token",
+				Name:     REFRESH_TOKEN_COOKIE,
 				Value:    refreshToken,
 				Path:     "/v1/user/access",
 				MaxAge:   60 * 60 * 24 * 7, // week in seconds
@@ -128,7 +132,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 			})
 
 			http.SetCookie(w, &http.Cookie{
-				Name:     "access_token",
+				Name:     ACCESS_TOKEN_COOKIE,
 				Value:    accessToken,
 				Path:     "/",
 				MaxAge:   60 * 60, // hour in seconds
@@ -139,7 +143,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 			})
 
 			http.SetCookie(w, &http.Cookie{
-				Name:     "session_id",
+				Name:     SESSION_COOKIE,
 				Value:    sessionId,
 				Path:     "/",
 				MaxAge:   60 * 60 * 24 * 7, // hour in seconds
@@ -162,16 +166,16 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserService, publicKuuraDomain string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// read session_id, refresh_token cookies
-		sessionCookie, err := r.Cookie("session_id")
+		sessionCookie, err := r.Cookie(SESSION_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, errors.New("'session_id' cookie not found")).WithMetadata("cookie", "session_id"))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", SESSION_COOKIE)).WithMetadata("cookie", SESSION_COOKIE))
 			return
 		}
 		sessionId := sessionCookie.Value
 
-		refreshCookie, err := r.Cookie("refresh_token")
+		refreshCookie, err := r.Cookie(REFRESH_TOKEN_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, errors.New("'refresh_token' cookie not found")).WithMetadata("cookie", "refresh_token"))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", REFRESH_TOKEN_COOKIE))
 			return
 		}
 		refreshToken := refreshCookie.Value
@@ -183,7 +187,7 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 		}
 
 		http.SetCookie(w, &http.Cookie{
-			Name:     "refresh_token",
+			Name:     REFRESH_TOKEN_COOKIE,
 			Value:    refreshToken,
 			Path:     "/v1/user/access",
 			MaxAge:   60 * 60 * 24 * 7, // week in seconds
@@ -194,7 +198,7 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 		})
 
 		http.SetCookie(w, &http.Cookie{
-			Name:     "access_token",
+			Name:     ACCESS_TOKEN_COOKIE,
 			Value:    accessToken,
 			Path:     "/",
 			MaxAge:   60 * 60, // hour in seconds
@@ -205,7 +209,7 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 		})
 
 		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
+			Name:     SESSION_COOKIE,
 			Value:    sessionId,
 			Path:     "/",
 			MaxAge:   60 * 60 * 24 * 7, // hour in seconds
