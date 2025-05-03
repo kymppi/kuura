@@ -9,7 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/kymppi/kuura/internal/errcode"
 	"github.com/kymppi/kuura/internal/errs"
+	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/users"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 const ACCESS_TOKEN_COOKIE = "kuura_access"
@@ -223,4 +225,90 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 			"success": true,
 		})
 	}
+}
+
+func V1_ME(logger *slog.Logger, users *users.UserService, jwkManager *jwks.JWKManager, jwtIssuer string) http.Handler {
+	type response struct {
+		Id          string `json:"id"`
+		Username    string `json:"username"`
+		LastLoginAt string `json:"last_login_at"`
+	}
+
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+
+			accessCookie, err := r.Cookie(ACCESS_TOKEN_COOKIE)
+			if err != nil {
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", ACCESS_TOKEN_COOKIE)))
+				return
+			}
+			token := accessCookie.Value
+
+			serviceId, err := extractServiceIdFromToken(token)
+			if err != nil {
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
+				return
+			} else if serviceId == nil {
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
+				return
+			}
+
+			jwkSet, err := jwkManager.GetJWKS(ctx, *serviceId)
+			if err != nil {
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to get JWKS: %w", err)))
+				return
+			}
+
+			client, err := parseToken(token, &AuthConfig{
+				JWTIssuer: jwtIssuer,
+				JWKSet:    jwkSet,
+			})
+			if err != nil {
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, err))
+				return
+			}
+
+			user, err := users.GetUser(ctx, client.Id)
+			if err != nil {
+				handleErr(w, r, logger, err)
+				return
+			}
+
+			safeEncode(w, r, logger, http.StatusOK, response{
+				Id:          user.Id,
+				Username:    user.Username,
+				LastLoginAt: user.LastLoginAt.UTC().Format("2006-01-02T15:04:05Z"),
+			})
+		},
+	)
+}
+
+// extracts the serviceId from a JWT token without fully validating it
+func extractServiceIdFromToken(tokenString string) (*uuid.UUID, error) {
+	token, err := jwt.Parse(
+		[]byte(tokenString),
+		jwt.WithVerify(false),   // Skip signature verification
+		jwt.WithValidate(false), // Skip validation
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	serviceId, ok := token.Get("service_id")
+	if !ok {
+		return nil, fmt.Errorf("serviceId claim not found in token")
+	}
+
+	serviceIdStr, ok := serviceId.(string)
+	if !ok || serviceIdStr == "" {
+		return nil, fmt.Errorf("serviceId claim is not a valid string")
+	}
+
+	parsedUUID, err := uuid.Parse(serviceIdStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse serviceId: %s", err)
+	}
+
+	return &parsedUUID, nil
 }

@@ -83,6 +83,11 @@ func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, r
 		return "", "", "", fmt.Errorf("failed to update session last authentication date: %w", err)
 	}
 
+	serviceId, err := utils.PgTypeUUIDToUUID(session.ServiceID)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to parse session service id: %w", err)
+	}
+
 	// important that we try to generate the jwt BEFORE updating refresh token, if it fails then the client can't even retry
 	exp := time.Now().Add(15 * time.Minute) //TODO: move to services db table
 
@@ -95,15 +100,11 @@ func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, r
 		Claim("session_id", sessionId).
 		Claim("roles", roles).
 		Claim("client_type", "user").
+		Claim("service_id", serviceId.String()).
 		Build()
 
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to build jwt: %w", err)
-	}
-
-	serviceId, err := utils.PgTypeUUIDToUUID(session.ServiceID)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to parse session service id: %w", err)
 	}
 
 	signingKey, err := s.jwkManager.GetSigningKey(ctx, serviceId)

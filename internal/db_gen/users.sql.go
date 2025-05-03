@@ -81,6 +81,24 @@ func (q *Queries) GetSRPVerifier(ctx context.Context, id string) (string, error)
 	return encoded_verifier, err
 }
 
+const getUser = `-- name: GetUser :one
+SELECT id, username, last_login_at FROM users
+WHERE id = $1
+`
+
+type GetUserRow struct {
+	ID          string             `json:"id"`
+	Username    string             `json:"username"`
+	LastLoginAt pgtype.Timestamptz `json:"last_login_at"`
+}
+
+func (q *Queries) GetUser(ctx context.Context, id string) (GetUserRow, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
+	var i GetUserRow
+	err := row.Scan(&i.ID, &i.Username, &i.LastLoginAt)
+	return i, err
+}
+
 const getUserIDFromUsername = `-- name: GetUserIDFromUsername :one
 SELECT id FROM users
 WHERE username = $1

@@ -22,3 +22,9 @@ type M2MRoleTemplate struct {
 	Id    string   `json:"id" yaml:"id"`
 	Roles []string `json:"roles" yaml:"roles"`
 }
+
+type User struct {
+	Id          string
+	Username    string
+	LastLoginAt *time.Time
+}

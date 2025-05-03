@@ -36,6 +36,7 @@ func newHTTPServer(
 		userService,
 		serviceManager,
 		config.PUBLIC_KUURA_DOMAIN,
+		config.JWT_ISSUER,
 	)
 
 	var handler http.Handler = mux

@@ -48,3 +48,7 @@ WHERE id = $2;
 -- name: GetUserRoles :one
 SELECT roles FROM users
 WHERE id = $1;
+
+-- name: GetUser :one
+SELECT id, username, last_login_at FROM users
+WHERE id = $1;

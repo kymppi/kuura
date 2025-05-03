@@ -21,6 +21,7 @@ func addMainRoutes(
 	userService *users.UserService,
 	serviceManager *services.ServiceManager,
 	publicKuuraDomain string,
+	jwtIssuer string,
 ) {
 	mux.Handle("/", http.NotFoundHandler())
 
@@ -29,6 +30,8 @@ func addMainRoutes(
 
 	mux.Handle("POST /v1/m2m/access", endpoints.V1M2MRefreshAccessToken(logger, m2mService))
 	mux.Handle("POST /v1/user/access", endpoints.V1_User_RefreshAccessToken(logger, userService, publicKuuraDomain))
+
+	mux.Handle("GET /v1/me", endpoints.V1_ME(logger, userService, jwkManager, jwtIssuer))
 
 	mux.Handle("POST /v1/srp/begin", endpoints.V1_SRP_ClientBegin(logger, userService))
 	mux.Handle("POST /v1/srp/verify", endpoints.V1_SRP_ClientVerify(logger, userService, publicKuuraDomain))

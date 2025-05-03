@@ -37,6 +37,7 @@ const (
 
 	// Category 02: Users
 	MissingCookie ErrorCode = "K0201"
+	UserNotFound  ErrorCode = "K0202"
 
 	// Category 03: JWKS
 	InvalidServiceId ErrorCode = "K0301"
@@ -72,6 +73,11 @@ var errorDetailsMap = map[ErrorCode]ErrorDetail{
 		Code:        MissingCookie,
 		StatusCode:  http.StatusBadRequest,
 		Description: "Missing one or more required cookies.",
+	},
+	UserNotFound: {
+		Code:        UserNotFound,
+		StatusCode:  http.StatusNotFound,
+		Description: "User not found.",
 	},
 
 	// Category 03: JWKS

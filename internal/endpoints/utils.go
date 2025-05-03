@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/kymppi/kuura/internal/errcode"
 	"github.com/kymppi/kuura/internal/errs"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -119,4 +122,57 @@ type Validator interface {
 	// problems. If len(problems) == 0 then
 	// the object is valid.
 	Valid(ctx context.Context) (problems map[string]string)
+}
+
+type AuthConfig struct {
+	JWTIssuer string
+	JWKSet    jwk.Set
+}
+
+type Client struct {
+	Id             string
+	Roles          []string
+	ClientType     string // machine | user
+	TokenExpiresAt time.Time
+}
+
+func parseToken(tokenString string, config *AuthConfig) (*Client, error) {
+	token, err := jwt.Parse(
+		[]byte(tokenString),
+		jwt.WithKeySet(config.JWKSet),
+		jwt.WithValidate(true),
+		jwt.WithIssuer(config.JWTIssuer),
+		jwt.WithRequiredClaim("exp"),
+		jwt.WithRequiredClaim("sub"),
+		jwt.WithRequiredClaim("roles"),
+		jwt.WithRequiredClaim("client_type"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("jwt validation failed: %w", err)
+	}
+
+	// exist boolean can be ignored because we already checked for it in the jwt.Parse call
+	rolesInterface, _ := token.Get("roles")
+	rolesSlice, ok := rolesInterface.([]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid roles format")
+	}
+
+	roles := make([]string, len(rolesSlice))
+	for i, v := range rolesSlice {
+		str, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid role type")
+		}
+		roles[i] = str
+	}
+
+	clientType, _ := token.Get("client_type")
+
+	return &Client{
+		Id:             token.Subject(),
+		Roles:          roles,
+		ClientType:     clientType.(string),
+		TokenExpiresAt: token.Expiration(),
+	}, nil
 }
