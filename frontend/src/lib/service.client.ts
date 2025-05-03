@@ -9,7 +9,7 @@ export interface ServiceInfo {
 export const getServiceInfo = async (
   serviceId: string
 ): Promise<ServiceInfo> => {
-  const data = await fetch(`/v1/services/${serviceId}`);
+  const data = await fetch(`/v1/${serviceId}`);
   if (!data.ok) {
     throw new Error(data.statusText);
   }
