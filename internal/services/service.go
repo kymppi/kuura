@@ -1,4 +1,4 @@
-package kuura
+package services
 
 import (
 	"context"
@@ -50,12 +50,14 @@ func (m *ServiceManager) GetService(ctx context.Context, id uuid.UUID) (*models.
 		return nil, handleAppServiceError("GetService", err, &id)
 	}
 	return &models.AppService{
-		Id:          id,
-		JWTAudience: data.JwtAudience,
-		CreatedAt:   data.CreatedAt.Time,
-		ModifiedAt:  data.ModifiedAt,
-		Name:        data.Name,
-		Description: data.Description.String,
+		Id:           id,
+		JWTAudience:  data.JwtAudience,
+		CreatedAt:    data.CreatedAt.Time,
+		ModifiedAt:   data.ModifiedAt,
+		Name:         data.Name,
+		Description:  data.Description.String,
+		ContactName:  data.ContactName,
+		ContactEmail: data.ContactEmail,
 	}, nil
 }
 
@@ -68,12 +70,14 @@ func (m *ServiceManager) GetServices(ctx context.Context) ([]*models.AppService,
 	var result []*models.AppService
 	for _, row := range data {
 		result = append(result, &models.AppService{
-			Id:          row.ID.Bytes,
-			JWTAudience: row.JwtAudience,
-			CreatedAt:   row.CreatedAt.Time,
-			ModifiedAt:  row.ModifiedAt,
-			Name:        row.Name,
-			Description: row.Description.String,
+			Id:           row.ID.Bytes,
+			JWTAudience:  row.JwtAudience,
+			CreatedAt:    row.CreatedAt.Time,
+			ModifiedAt:   row.ModifiedAt,
+			Name:         row.Name,
+			Description:  row.Description.String,
+			ContactName:  row.ContactName,
+			ContactEmail: row.ContactEmail,
 		})
 	}
 

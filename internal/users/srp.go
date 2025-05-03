@@ -2,12 +2,15 @@ package users
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kymppi/kuura/internal/db_gen"
+	"github.com/kymppi/kuura/internal/errcode"
+	"github.com/kymppi/kuura/internal/errs"
 	"github.com/opencoff/go-srp"
 )
 
@@ -30,7 +33,7 @@ func (s *UserService) ClientVerify(ctx context.Context, ih string, data string) 
 
 	proof, ok := srv.ClientOk(data)
 	if !ok {
-		return "", "", fmt.Errorf("unauthorized")
+		return "", "", errs.New(errcode.Unauthorized, errors.New("client proof not ok"))
 	}
 
 	s.logger.Info("User logged in", slog.String("uid", uid))

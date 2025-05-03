@@ -8,7 +8,8 @@ export type LoginError =
   | 'INVALID_CREDENTIALS'
   | 'SERVER_ERROR'
   | 'NETWORK_ERROR'
-  | 'SUSPICIOUS_SERVER';
+  | 'SUSPICIOUS_SERVER'
+  | 'CLIENT_UNSUPPORTED';
 
 interface AuthenticationResponse {
   data: string;
@@ -34,6 +35,10 @@ export class SRPAuthClient {
     username: string,
     password: string
   ): Promise<{ success: true } | { success: false; error: LoginError }> {
+    if (!this.isClientSupported()) {
+      return { success: false, error: 'CLIENT_UNSUPPORTED' };
+    }
+
     try {
       // Step 1: Initialize authentication
       const authResponse = await this.initiateAuthentication(
@@ -178,6 +183,16 @@ export class SRPAuthClient {
         return { success: false, error: 'INVALID_CREDENTIALS' };
       }
     }
+
     return { success: false, error: 'SERVER_ERROR' };
+  }
+
+  private isClientSupported(): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      !!window.crypto &&
+      !!window.crypto.subtle &&
+      typeof TextEncoder !== 'undefined'
+    );
   }
 }

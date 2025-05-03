@@ -30,3 +30,6 @@ down-db: ## Stop the local dependency stack
 
 migration: ## Create a new SQL migration
 	sql-migrate new $(name)
+
+migrate: ## Run migrations
+	sql-migrate up

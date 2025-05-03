@@ -31,6 +31,7 @@ const (
 	InternalServerError  ErrorCode = "K0001"
 	Timeout              ErrorCode = "K0002"
 	InvalidArgumentError ErrorCode = "K0003"
+	Unauthorized         ErrorCode = "K0004"
 
 	// Category 01: M2M
 
@@ -57,6 +58,11 @@ var errorDetailsMap = map[ErrorCode]ErrorDetail{
 		Code:        InvalidArgumentError,
 		StatusCode:  400,
 		Description: "Invalid request body",
+	},
+	Unauthorized: {
+		Code:        Unauthorized,
+		StatusCode:  401,
+		Description: "Unauthorized",
 	},
 
 	// Category 01: M2M

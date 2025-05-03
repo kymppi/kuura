@@ -1,8 +1,8 @@
 ---
-import LoginForm from '../components/LoginForm.astro';
-import Layout from '../layouts/Layout.astro';
+import LoginPage from '../components/LoginPage';
+import ClientExperienceLayout from '../layouts/ClientExperienceLayout.astro';
 ---
 
-<Layout>
-  <LoginForm />
-</Layout>
+<ClientExperienceLayout>
+  <LoginPage client:load />
+</ClientExperienceLayout>

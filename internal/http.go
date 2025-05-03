@@ -10,6 +10,7 @@ import (
 	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/m2m"
 	m "github.com/kymppi/kuura/internal/middleware"
+	"github.com/kymppi/kuura/internal/services"
 	"github.com/kymppi/kuura/internal/users"
 )
 
@@ -20,6 +21,7 @@ func newHTTPServer(
 	m2mService *m2m.M2MService,
 	frontendFS embed.FS,
 	userService *users.UserService,
+	serviceManager *services.ServiceManager,
 ) *http.Server {
 	mux := http.NewServeMux()
 
@@ -32,6 +34,7 @@ func newHTTPServer(
 		m2mService,
 		frontendFS,
 		userService,
+		serviceManager,
 		config.PUBLIC_KUURA_DOMAIN,
 	)
 
