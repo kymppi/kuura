@@ -1049,8 +1049,8 @@ packages:
   es-module-lexer@1.7.0:
     resolution: {integrity: sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==}
 
-  es-toolkit@1.36.0:
-    resolution: {integrity: sha512-5lpkRpDELuTSeAL//Rcg5urg+K/yOD1BobJSiNeCc89snMqgrhckmj8jdljqraDbpREiXTNW311RN518eVHBng==}
+  es-toolkit@1.37.2:
+    resolution: {integrity: sha512-ADDfk+pPFF0ofMpRAIc6on01p8heiuwuuJsYLzTP4UOjxVK9QsE2+0D1Q4J/zX2XBo6ac+27H5++YBIwmGAX/g==}
 
   esbuild@0.25.3:
     resolution: {integrity: sha512-qKA6Pvai73+M2FtftpNKRxJ78GIjmFXFxd/1DVBqGo/qNhLSfv+G12n9pNoWdytJC8U00TrViOwpjT0zgqQS8Q==}
@@ -1462,8 +1462,8 @@ packages:
     resolution: {integrity: sha512-MyIV3ZA/PmyBN/ud8vV9XzwTrNtR4jFrObymZYnZqMmW0zA8Z17vnT0rBgFE/TlohB+YCHqXMgZzb3Csp49vqg==}
     engines: {node: '>=14.16'}
 
-  package-manager-detector@1.2.0:
-    resolution: {integrity: sha512-PutJepsOtsqVfUsxCzgTTpyXmiAgvKptIgY4th5eq5UXXFhj5PxfQ9hnGkypMeovpAvVshFRItoFHYO18TCOqA==}
+  package-manager-detector@1.3.0:
+    resolution: {integrity: sha512-ZsEbbZORsyHuO00lY1kV3/t72yp6Ysay6Pd17ZAlNGuGwmWDLCJxFpRs0IzfXfj1o4icJOkUEioexFHzyPurSQ==}
 
   pako@0.2.9:
     resolution: {integrity: sha512-NUcwaKxUxWrZLpDG+z/xZaCgQITkA/Dv4V/T6bw7VON6l1Xz/VnrBqrYjZQ12TamKHzITTfOEIYUj48y2KXImA==}
@@ -2185,7 +2185,7 @@ snapshots:
       classnames: 2.5.1
       copy-to-clipboard: 3.3.3
       downshift: 9.0.8(react@19.1.0)
-      es-toolkit: 1.36.0
+      es-toolkit: 1.37.2
       flatpickr: 4.6.13
       invariant: 2.2.4
       prop-types: 15.8.1
@@ -2747,7 +2747,7 @@ snapshots:
       neotraverse: 0.6.18
       p-limit: 6.2.0
       p-queue: 8.1.0
-      package-manager-detector: 1.2.0
+      package-manager-detector: 1.3.0
       picomatch: 4.0.2
       prompts: 2.4.2
       rehype: 13.0.2
@@ -2981,7 +2981,7 @@ snapshots:
 
   es-module-lexer@1.7.0: {}
 
-  es-toolkit@1.36.0: {}
+  es-toolkit@1.37.2: {}
 
   esbuild@0.25.3:
     optionalDependencies:
@@ -3618,7 +3618,7 @@ snapshots:
 
   p-timeout@6.1.4: {}
 
-  package-manager-detector@1.2.0: {}
+  package-manager-detector@1.3.0: {}
 
   pako@0.2.9: {}
 
