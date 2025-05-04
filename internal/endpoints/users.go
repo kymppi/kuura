@@ -9,14 +9,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/kymppi/kuura/internal/errcode"
 	"github.com/kymppi/kuura/internal/errs"
-	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/users"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-const ACCESS_TOKEN_COOKIE = "kuura_access"
 const REFRESH_TOKEN_COOKIE = "kuura_refresh"
 const SESSION_COOKIE = "kuura_session"
+const KUURA_ACCESS_TOKEN_COOKIE = "kuura_access"
 
 type srpClientBegin struct {
 	Data string `json:"data"`
@@ -110,13 +108,13 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 				return
 			}
 
-			sessionId, refreshToken, err := userService.CreateSession(ctx, uid, uuid.MustParse(payload.TargetService))
+			sessionId, initialRefreshToken, err := userService.CreateSession(ctx, uid, uuid.MustParse(payload.TargetService))
 			if err != nil {
 				handleErr(w, r, logger, err)
 				return
 			}
 
-			accessToken, refreshToken, serviceDomain, err := userService.CreateAccessToken(ctx, sessionId, refreshToken)
+			tokenInfo, err := userService.CreateAccessToken(ctx, sessionId, initialRefreshToken)
 			if err != nil {
 				handleErr(w, r, logger, err)
 				return
@@ -124,7 +122,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 
 			http.SetCookie(w, &http.Cookie{
 				Name:     REFRESH_TOKEN_COOKIE,
-				Value:    refreshToken,
+				Value:    tokenInfo.RefreshToken,
 				Path:     "/v1/user/access",
 				MaxAge:   60 * 60 * 24 * 7, // week in seconds
 				HttpOnly: true,
@@ -134,14 +132,14 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 			})
 
 			http.SetCookie(w, &http.Cookie{
-				Name:     ACCESS_TOKEN_COOKIE,
-				Value:    accessToken,
+				Name:     tokenInfo.ServiceAccessCookieName,
+				Value:    tokenInfo.AccessToken,
 				Path:     "/",
-				MaxAge:   60 * 60, // hour in seconds
+				MaxAge:   int(tokenInfo.AccessTokenDuration.Seconds()),
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteLaxMode,
-				Domain:   serviceDomain,
+				Domain:   tokenInfo.ServiceDomain,
 			})
 
 			http.SetCookie(w, &http.Cookie{
@@ -180,9 +178,9 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", REFRESH_TOKEN_COOKIE))
 			return
 		}
-		refreshToken := refreshCookie.Value
+		initialRefreshToken := refreshCookie.Value
 
-		accessToken, refreshToken, serviceDomain, err := userService.CreateAccessToken(r.Context(), sessionId, refreshToken)
+		tokenInfo, err := userService.CreateAccessToken(r.Context(), sessionId, initialRefreshToken)
 		if err != nil {
 			handleErr(w, r, logger, err)
 			return
@@ -190,7 +188,7 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 
 		http.SetCookie(w, &http.Cookie{
 			Name:     REFRESH_TOKEN_COOKIE,
-			Value:    refreshToken,
+			Value:    tokenInfo.RefreshToken,
 			Path:     "/v1/user/access",
 			MaxAge:   60 * 60 * 24 * 7, // week in seconds
 			HttpOnly: true,
@@ -200,14 +198,14 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 		})
 
 		http.SetCookie(w, &http.Cookie{
-			Name:     ACCESS_TOKEN_COOKIE,
-			Value:    accessToken,
+			Name:     tokenInfo.ServiceAccessCookieName,
+			Value:    tokenInfo.AccessToken,
 			Path:     "/",
-			MaxAge:   60 * 60, // hour in seconds
+			MaxAge:   int(tokenInfo.AccessTokenDuration.Seconds()),
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteLaxMode,
-			Domain:   serviceDomain,
+			Domain:   tokenInfo.ServiceDomain,
 		})
 
 		http.SetCookie(w, &http.Cookie{
@@ -227,88 +225,88 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 	}
 }
 
-func V1_ME(logger *slog.Logger, users *users.UserService, jwkManager *jwks.JWKManager, jwtIssuer string) http.Handler {
-	type response struct {
-		Id          string `json:"id"`
-		Username    string `json:"username"`
-		LastLoginAt string `json:"last_login_at"`
-	}
+// func V1_ME(logger *slog.Logger, users *users.UserService, jwkManager *jwks.JWKManager, jwtIssuer string) http.Handler {
+// 	type response struct {
+// 		Id          string `json:"id"`
+// 		Username    string `json:"username"`
+// 		LastLoginAt string `json:"last_login_at"`
+// 	}
 
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
+// 	return http.HandlerFunc(
+// 		func(w http.ResponseWriter, r *http.Request) {
+// 			ctx := r.Context()
 
-			accessCookie, err := r.Cookie(ACCESS_TOKEN_COOKIE)
-			if err != nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", ACCESS_TOKEN_COOKIE)))
-				return
-			}
-			token := accessCookie.Value
+// 			accessCookie, err := r.Cookie(ACCESS_TOKEN_COOKIE)
+// 			if err != nil {
+// 				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", ACCESS_TOKEN_COOKIE)))
+// 				return
+// 			}
+// 			token := accessCookie.Value
 
-			serviceId, err := extractServiceIdFromToken(token)
-			if err != nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
-				return
-			} else if serviceId == nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
-				return
-			}
+// 			serviceId, err := extractServiceIdFromToken(token)
+// 			if err != nil {
+// 				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
+// 				return
+// 			} else if serviceId == nil {
+// 				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
+// 				return
+// 			}
 
-			jwkSet, err := jwkManager.GetJWKS(ctx, *serviceId)
-			if err != nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to get JWKS: %w", err)))
-				return
-			}
+// 			jwkSet, err := jwkManager.GetJWKS(ctx, *serviceId)
+// 			if err != nil {
+// 				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to get JWKS: %w", err)))
+// 				return
+// 			}
 
-			client, err := parseToken(token, &AuthConfig{
-				JWTIssuer: jwtIssuer,
-				JWKSet:    jwkSet,
-			})
-			if err != nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, err))
-				return
-			}
+// 			client, err := parseToken(token, &AuthConfig{
+// 				JWTIssuer: jwtIssuer,
+// 				JWKSet:    jwkSet,
+// 			})
+// 			if err != nil {
+// 				handleErr(w, r, logger, errs.New(errcode.Unauthorized, err))
+// 				return
+// 			}
 
-			user, err := users.GetUser(ctx, client.Id)
-			if err != nil {
-				handleErr(w, r, logger, err)
-				return
-			}
+// 			user, err := users.GetUser(ctx, client.Id)
+// 			if err != nil {
+// 				handleErr(w, r, logger, err)
+// 				return
+// 			}
 
-			safeEncode(w, r, logger, http.StatusOK, response{
-				Id:          user.Id,
-				Username:    user.Username,
-				LastLoginAt: user.LastLoginAt.UTC().Format("2006-01-02T15:04:05Z"),
-			})
-		},
-	)
-}
+// 			safeEncode(w, r, logger, http.StatusOK, response{
+// 				Id:          user.Id,
+// 				Username:    user.Username,
+// 				LastLoginAt: user.LastLoginAt.UTC().Format("2006-01-02T15:04:05Z"),
+// 			})
+// 		},
+// 	)
+// }
 
-// extracts the serviceId from a JWT token without fully validating it
-func extractServiceIdFromToken(tokenString string) (*uuid.UUID, error) {
-	token, err := jwt.Parse(
-		[]byte(tokenString),
-		jwt.WithVerify(false),   // Skip signature verification
-		jwt.WithValidate(false), // Skip validation
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
-	}
+// // extracts the serviceId from a JWT token without fully validating it
+// func extractServiceIdFromToken(tokenString string) (*uuid.UUID, error) {
+// 	token, err := jwt.Parse(
+// 		[]byte(tokenString),
+// 		jwt.WithVerify(false),   // Skip signature verification
+// 		jwt.WithValidate(false), // Skip validation
+// 	)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to parse token: %w", err)
+// 	}
 
-	serviceId, ok := token.Get("service_id")
-	if !ok {
-		return nil, fmt.Errorf("serviceId claim not found in token")
-	}
+// 	serviceId, ok := token.Get("service_id")
+// 	if !ok {
+// 		return nil, fmt.Errorf("serviceId claim not found in token")
+// 	}
 
-	serviceIdStr, ok := serviceId.(string)
-	if !ok || serviceIdStr == "" {
-		return nil, fmt.Errorf("serviceId claim is not a valid string")
-	}
+// 	serviceIdStr, ok := serviceId.(string)
+// 	if !ok || serviceIdStr == "" {
+// 		return nil, fmt.Errorf("serviceId claim is not a valid string")
+// 	}
 
-	parsedUUID, err := uuid.Parse(serviceIdStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse serviceId: %s", err)
-	}
+// 	parsedUUID, err := uuid.Parse(serviceIdStr)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to parse serviceId: %s", err)
+// 	}
 
-	return &parsedUUID, nil
-}
+// 	return &parsedUUID, nil
+// }

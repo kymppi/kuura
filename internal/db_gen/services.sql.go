@@ -44,7 +44,7 @@ func (q *Queries) DeleteAppService(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getAppService = `-- name: GetAppService :one
-SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain, contact_name, contact_email, login_redirect FROM services
+SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain, contact_name, contact_email, login_redirect, access_token_duration, access_token_cookie FROM services
 WHERE id = $1
 `
 
@@ -62,12 +62,14 @@ func (q *Queries) GetAppService(ctx context.Context, id pgtype.UUID) (Service, e
 		&i.ContactName,
 		&i.ContactEmail,
 		&i.LoginRedirect,
+		&i.AccessTokenDuration,
+		&i.AccessTokenCookie,
 	)
 	return i, err
 }
 
 const getAppServices = `-- name: GetAppServices :many
-SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain, contact_name, contact_email, login_redirect FROM services
+SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain, contact_name, contact_email, login_redirect, access_token_duration, access_token_cookie FROM services
 `
 
 func (q *Queries) GetAppServices(ctx context.Context) ([]Service, error) {
@@ -90,6 +92,8 @@ func (q *Queries) GetAppServices(ctx context.Context) ([]Service, error) {
 			&i.ContactName,
 			&i.ContactEmail,
 			&i.LoginRedirect,
+			&i.AccessTokenDuration,
+			&i.AccessTokenCookie,
 		); err != nil {
 			return nil, err
 		}
