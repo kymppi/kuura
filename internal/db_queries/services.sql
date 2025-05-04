@@ -6,8 +6,8 @@ WHERE id = $1;
 SELECT * FROM services;
 
 -- name: CreateAppService :exec
-INSERT INTO services (id, jwt_audience, name, api_domain)
-VALUES ($1, $2, $3, $4);
+INSERT INTO services (id, jwt_audience, name, api_domain, login_redirect)
+VALUES ($1, $2, $3, $4, $5);
 
 -- name: DeleteAppService :exec
 DELETE FROM services

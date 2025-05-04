@@ -12,15 +12,16 @@ import (
 )
 
 const createAppService = `-- name: CreateAppService :exec
-INSERT INTO services (id, jwt_audience, name, api_domain)
-VALUES ($1, $2, $3, $4)
+INSERT INTO services (id, jwt_audience, name, api_domain, login_redirect)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateAppServiceParams struct {
-	ID          pgtype.UUID `json:"id"`
-	JwtAudience string      `json:"jwt_audience"`
-	Name        string      `json:"name"`
-	ApiDomain   string      `json:"api_domain"`
+	ID            pgtype.UUID `json:"id"`
+	JwtAudience   string      `json:"jwt_audience"`
+	Name          string      `json:"name"`
+	ApiDomain     string      `json:"api_domain"`
+	LoginRedirect string      `json:"login_redirect"`
 }
 
 func (q *Queries) CreateAppService(ctx context.Context, arg CreateAppServiceParams) error {
@@ -29,6 +30,7 @@ func (q *Queries) CreateAppService(ctx context.Context, arg CreateAppServicePara
 		arg.JwtAudience,
 		arg.Name,
 		arg.ApiDomain,
+		arg.LoginRedirect,
 	)
 	return err
 }

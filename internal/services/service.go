@@ -19,7 +19,13 @@ import (
 
 const KUURA_AUDIENCE = "kuura"
 
-func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudience string, apiDomain string) (*uuid.UUID, error) {
+func (m *ServiceManager) CreateService(
+	ctx context.Context,
+	name string,
+	jwtAudience string,
+	apiDomain string,
+	loginRedirect string,
+) (*uuid.UUID, error) {
 	id, err := uuid.NewV7()
 
 	if err != nil {
@@ -27,10 +33,11 @@ func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudi
 	}
 
 	err = m.db.CreateAppService(ctx, db_gen.CreateAppServiceParams{
-		ID:          utils.UUIDToPgType(id),
-		JwtAudience: jwtAudience,
-		Name:        name,
-		ApiDomain:   apiDomain,
+		ID:            utils.UUIDToPgType(id),
+		JwtAudience:   jwtAudience,
+		Name:          name,
+		ApiDomain:     apiDomain,
+		LoginRedirect: loginRedirect,
 	})
 
 	if err != nil {
@@ -162,7 +169,7 @@ func (m *ServiceManager) CreateInternalServiceIfNotExists(ctx context.Context, p
 		}
 	}
 
-	newServiceUUID, err := m.CreateService(ctx, "Kuura", KUURA_AUDIENCE, publicKuuraDomain)
+	newServiceUUID, err := m.CreateService(ctx, "Kuura", KUURA_AUDIENCE, publicKuuraDomain, fmt.Sprintf("https://%s/home", publicKuuraDomain))
 	if err != nil {
 		return err
 	}
