@@ -10,19 +10,14 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/kymppi/kuura/internal/db_gen"
+	"github.com/kymppi/kuura/internal/enums/instance_setting"
+	"github.com/kymppi/kuura/internal/errcode"
+	"github.com/kymppi/kuura/internal/errs"
 	"github.com/kymppi/kuura/internal/models"
 	"github.com/kymppi/kuura/internal/utils"
 )
 
-type ServiceManager struct {
-	db *db_gen.Queries
-}
-
-func NewServiceManager(databaseQueries *db_gen.Queries) *ServiceManager {
-	return &ServiceManager{
-		db: databaseQueries,
-	}
-}
+const KUURA_AUDIENCE = "kuura"
 
 func (m *ServiceManager) CreateService(ctx context.Context, name string, jwtAudience string, apiDomain string) (*uuid.UUID, error) {
 	id, err := uuid.NewV7()
@@ -122,4 +117,39 @@ func handleAppServiceError(operation string, err error, id *uuid.UUID) error {
 		baseMsg += fmt.Sprintf(" (ID: %s)", id)
 	}
 	return fmt.Errorf("%s: error occurred: %w", baseMsg, err)
+}
+
+func (m *ServiceManager) CreateInternalServiceIfNotExists(ctx context.Context, publicKuuraDomain string) error {
+	existingServiceId, err := m.settings.GetValue(ctx, instance_setting.InternalServiceId)
+	if err != nil && !errs.IsErrorCode(err, errcode.SettingNotFound) {
+		return err
+	}
+
+	existingServiceUUID, err := uuid.Parse(existingServiceId)
+	if err != nil {
+		return err
+	}
+
+	possibleService, err := m.GetService(ctx, existingServiceUUID)
+	if err != nil && !errs.IsErrorCode(err, errcode.ServiceNotFound) {
+		return err
+	}
+
+	if possibleService != nil {
+		// service exists
+
+		//TODO: check if domain is the same, if not -> update
+		return nil
+	}
+
+	newServiceUUID, err := m.CreateService(ctx, "Kuura", KUURA_AUDIENCE, publicKuuraDomain)
+	if err != nil {
+		return err
+	}
+
+	if err := m.settings.SaveValue(ctx, instance_setting.InternalServiceId, newServiceUUID.String()); err != nil {
+		return err
+	}
+
+	return nil
 }

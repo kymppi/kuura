@@ -41,28 +41,34 @@ const (
 
 	// Category 03: JWKS
 	InvalidServiceId ErrorCode = "K0301"
+
+	// Category 04: Instance settings
+	SettingNotFound ErrorCode = "K0401"
+
+	// Category 05: Services
+	ServiceNotFound ErrorCode = "K0501"
 )
 
 var errorDetailsMap = map[ErrorCode]ErrorDetail{
 	// Category 00: General
 	InternalServerError: {
 		Code:        InternalServerError,
-		StatusCode:  500,
+		StatusCode:  http.StatusInternalServerError,
 		Description: "Internal server error",
 	},
 	Timeout: {
 		Code:        Timeout,
-		StatusCode:  408,
+		StatusCode:  http.StatusRequestTimeout,
 		Description: "Request timed out",
 	},
 	InvalidArgumentError: {
 		Code:        InvalidArgumentError,
-		StatusCode:  400,
+		StatusCode:  http.StatusBadRequest,
 		Description: "Invalid request body",
 	},
 	Unauthorized: {
 		Code:        Unauthorized,
-		StatusCode:  401,
+		StatusCode:  http.StatusUnauthorized,
 		Description: "Unauthorized",
 	},
 
@@ -85,5 +91,19 @@ var errorDetailsMap = map[ErrorCode]ErrorDetail{
 		Code:        InvalidServiceId,
 		StatusCode:  http.StatusBadRequest,
 		Description: "The service_id is not a valid uuid.",
+	},
+
+	// Category 04: Instance settings
+	SettingNotFound: {
+		Code:        SettingNotFound,
+		StatusCode:  http.StatusNotFound,
+		Description: "Setting not found.",
+	},
+
+	// Category 05: Services
+	ServiceNotFound: {
+		Code:        ServiceNotFound,
+		StatusCode:  http.StatusNotFound,
+		Description: "Service not found.",
 	},
 }

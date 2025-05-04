@@ -10,6 +10,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type InstanceSetting struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type JwkPrivate struct {
 	ID               string             `json:"id"`
 	ServiceID        pgtype.UUID        `json:"service_id"`

@@ -8,6 +8,7 @@ import (
 
 	"github.com/kymppi/kuura/internal/m2m"
 	"github.com/kymppi/kuura/internal/services"
+	"github.com/kymppi/kuura/internal/settings"
 	"github.com/kymppi/kuura/internal/users"
 )
 
@@ -23,7 +24,8 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config, fronten
 		return err
 	}
 
-	serviceManager := services.NewServiceManager(queries)
+	settingsService := settings.NewSettingsService(logger, queries)
+	serviceManager := services.NewServiceManager(logger, queries, settingsService)
 	m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
 	userService := users.NewUserService(logger, queries, config.JWT_ISSUER, jwkManager, serviceManager)
 
