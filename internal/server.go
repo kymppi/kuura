@@ -3,6 +3,7 @@ package kuura
 import (
 	"context"
 	"embed"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -26,6 +27,11 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config, fronten
 
 	settingsService := settings.NewSettingsService(logger, queries)
 	serviceManager := services.NewServiceManager(logger, queries, settingsService)
+
+	if err := serviceManager.CreateInternalServiceIfNotExists(ctx, config.PUBLIC_KUURA_DOMAIN); err != nil {
+		return fmt.Errorf("faied to create internal service for kuura: %w", err)
+	}
+
 	m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
 	userService := users.NewUserService(logger, queries, config.JWT_ISSUER, jwkManager, serviceManager)
 
