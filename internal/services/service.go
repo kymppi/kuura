@@ -165,6 +165,8 @@ func (m *ServiceManager) CreateInternalServiceIfNotExists(ctx context.Context, p
 		if possibleService != nil {
 			// service exists
 			//TODO: check if domain is the same, if not -> update
+			//TODO: make sure the cookie is correct
+			//TODO: make sure the redirect is correct at /home
 			return nil
 		}
 	}
