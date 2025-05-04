@@ -61,6 +61,25 @@ func (m *ServiceManager) GetService(ctx context.Context, id uuid.UUID) (*models.
 	}, nil
 }
 
+func (m *ServiceManager) GetInternalKuuraService(ctx context.Context) (*models.AppService, error) {
+	internalServiceId, err := m.settings.GetValue(ctx, instance_setting.InternalServiceId)
+	if err != nil {
+		return nil, err
+	}
+
+	internalServiceUUID, err := uuid.Parse(internalServiceId)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := m.GetService(ctx, internalServiceUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
 func (m *ServiceManager) GetServices(ctx context.Context) ([]*models.AppService, error) {
 	data, err := m.db.GetAppServices(ctx)
 	if err != nil {
@@ -125,21 +144,22 @@ func (m *ServiceManager) CreateInternalServiceIfNotExists(ctx context.Context, p
 		return err
 	}
 
-	existingServiceUUID, err := uuid.Parse(existingServiceId)
-	if err != nil {
-		return err
-	}
+	if existingServiceId != "" {
+		existingServiceUUID, err := uuid.Parse(existingServiceId)
+		if err != nil {
+			return err
+		}
 
-	possibleService, err := m.GetService(ctx, existingServiceUUID)
-	if err != nil && !errs.IsErrorCode(err, errcode.ServiceNotFound) {
-		return err
-	}
+		possibleService, err := m.GetService(ctx, existingServiceUUID)
+		if err != nil && !errs.IsErrorCode(err, errcode.ServiceNotFound) {
+			return err
+		}
 
-	if possibleService != nil {
-		// service exists
-
-		//TODO: check if domain is the same, if not -> update
-		return nil
+		if possibleService != nil {
+			// service exists
+			//TODO: check if domain is the same, if not -> update
+			return nil
+		}
 	}
 
 	newServiceUUID, err := m.CreateService(ctx, "Kuura", KUURA_AUDIENCE, publicKuuraDomain)
