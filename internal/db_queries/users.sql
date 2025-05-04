@@ -18,9 +18,17 @@ WHERE username = $1;
 SELECT id FROM users
 WHERE hashed_username = $1;
 
--- name: SaveSRPServer :exec
+-- name: CheckSRPServerNotExpired :one
+SELECT EXISTS (
+    SELECT 1 FROM user_srp
+    WHERE uid = $1 AND expires_at > CURRENT_TIMESTAMP
+) AS record_not_expired;
+
+-- name: UpsertSRPServer :exec
 INSERT INTO user_srp (uid, encoded_server, expires_at)
-VALUES ($1, $2, $3);
+VALUES ($1, $2, $3)
+ON CONFLICT (uid) DO UPDATE
+SET encoded_server = EXCLUDED.encoded_server, expires_at = EXCLUDED.expires_at;
 
 -- name: CreateUserSession :exec
 INSERT INTO user_sessions (id, user_id, service_id, refresh_token_hash, expires_at)

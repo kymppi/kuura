@@ -36,8 +36,9 @@ const (
 	// Category 01: M2M
 
 	// Category 02: Users
-	MissingCookie ErrorCode = "K0201"
-	UserNotFound  ErrorCode = "K0202"
+	MissingCookie    ErrorCode = "K0201"
+	UserNotFound     ErrorCode = "K0202"
+	AlreadyLoggingIn ErrorCode = "K0203"
 
 	// Category 03: JWKS
 	InvalidServiceId ErrorCode = "K0301"
@@ -74,7 +75,7 @@ var errorDetailsMap = map[ErrorCode]ErrorDetail{
 
 	// Category 01: M2M
 
-	// Category 02:
+	// Category 02: Users
 	MissingCookie: {
 		Code:        MissingCookie,
 		StatusCode:  http.StatusBadRequest,
@@ -84,6 +85,11 @@ var errorDetailsMap = map[ErrorCode]ErrorDetail{
 		Code:        UserNotFound,
 		StatusCode:  http.StatusNotFound,
 		Description: "User not found.",
+	},
+	AlreadyLoggingIn: {
+		Code:        AlreadyLoggingIn,
+		StatusCode:  http.StatusConflict,
+		Description: "You're already trying to login from another device.",
 	},
 
 	// Category 03: JWKS

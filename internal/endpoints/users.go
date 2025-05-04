@@ -120,38 +120,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 				return
 			}
 
-			http.SetCookie(w, &http.Cookie{
-				Name:     REFRESH_TOKEN_COOKIE,
-				Value:    tokenInfo.RefreshToken,
-				Path:     "/v1/user/access",
-				MaxAge:   60 * 60 * 24 * 7, // week in seconds
-				HttpOnly: true,
-				Secure:   true,
-				SameSite: http.SameSiteStrictMode, // path must match
-				Domain:   publicKuuraDomain,
-			})
-
-			http.SetCookie(w, &http.Cookie{
-				Name:     tokenInfo.ServiceAccessCookieName,
-				Value:    tokenInfo.AccessToken,
-				Path:     "/",
-				MaxAge:   int(tokenInfo.AccessTokenDuration.Seconds()),
-				HttpOnly: true,
-				Secure:   true,
-				SameSite: http.SameSiteLaxMode,
-				Domain:   tokenInfo.ServiceDomain,
-			})
-
-			http.SetCookie(w, &http.Cookie{
-				Name:     SESSION_COOKIE,
-				Value:    sessionId,
-				Path:     "/",
-				MaxAge:   60 * 60 * 24 * 7, // hour in seconds
-				HttpOnly: false,
-				Secure:   true,
-				SameSite: http.SameSiteLaxMode,
-				Domain:   publicKuuraDomain,
-			})
+			setAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
 
 			data := response{
 				Success: true,
@@ -186,38 +155,7 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 			return
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     REFRESH_TOKEN_COOKIE,
-			Value:    tokenInfo.RefreshToken,
-			Path:     "/v1/user/access",
-			MaxAge:   60 * 60 * 24 * 7, // week in seconds
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode, // path must match
-			Domain:   publicKuuraDomain,
-		})
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     tokenInfo.ServiceAccessCookieName,
-			Value:    tokenInfo.AccessToken,
-			Path:     "/",
-			MaxAge:   int(tokenInfo.AccessTokenDuration.Seconds()),
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-			Domain:   tokenInfo.ServiceDomain,
-		})
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     SESSION_COOKIE,
-			Value:    sessionId,
-			Path:     "/",
-			MaxAge:   60 * 60 * 24 * 7, // hour in seconds
-			HttpOnly: false,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-			Domain:   publicKuuraDomain,
-		})
+		setAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
 
 		safeEncode(w, r, logger, http.StatusOK, map[string]any{
 			"success": true,
@@ -310,3 +248,41 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 
 // 	return &parsedUUID, nil
 // }
+
+func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.TokenInfo, publicKuuraDomain string) {
+	// refresh token
+	http.SetCookie(w, &http.Cookie{
+		Name:     REFRESH_TOKEN_COOKIE,
+		Value:    tokenInfo.RefreshToken,
+		Path:     "/v1/user/access",
+		MaxAge:   60 * 60 * 24 * 7, // week in seconds
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode, // path must match
+		Domain:   publicKuuraDomain,
+	})
+
+	// session
+	http.SetCookie(w, &http.Cookie{
+		Name:     SESSION_COOKIE,
+		Value:    sessionId,
+		Path:     "/",
+		MaxAge:   60 * 60 * 24 * 30, // month in seconds
+		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   publicKuuraDomain,
+	})
+
+	// service specific access token
+	http.SetCookie(w, &http.Cookie{
+		Name:     tokenInfo.ServiceAccessCookieName,
+		Value:    tokenInfo.AccessToken,
+		Path:     "/",
+		MaxAge:   int(tokenInfo.AccessTokenDuration.Seconds()),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   tokenInfo.ServiceDomain,
+	})
+}
