@@ -6,7 +6,7 @@ import { DefaultPrimeField } from '../lib/srp.client';
 
 const client = new SRPAuthClient('', DefaultPrimeField);
 
-export default function LoginPage() {
+export default function LoginPage({ returnTo }: { returnTo: string }) {
   const [serviceData, setServiceData] = useState<ServiceInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,18 +14,9 @@ export default function LoginPage() {
   useEffect(() => {
     const fetchServiceInfo = async () => {
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const serviceId = urlParams.get('service');
-
-        if (serviceId) {
-          setIsLoading(true);
-          const data = await getServiceInfo(serviceId);
-          setServiceData(data);
-        } else {
-          setIsLoading(true);
-          const data = await getServiceInfo();
-          setServiceData(data);
-        }
+        setIsLoading(true);
+        const data = await getServiceInfo();
+        setServiceData(data);
       } catch (err) {
         setError('Failed to load service information');
         console.error(err);
@@ -63,14 +54,20 @@ export default function LoginPage() {
         ) : error ? (
           <p>{error}</p>
         ) : serviceData ? (
-          <LoginForm info={serviceData} />
+          <LoginForm info={serviceData} returnTo={returnTo} />
         ) : null}
       </div>
     </div>
   );
 }
 
-function LoginForm({ info }: { info: ServiceInfo }) {
+function LoginForm({
+  info,
+  returnTo,
+}: {
+  info: ServiceInfo;
+  returnTo: string;
+}) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -97,7 +94,7 @@ function LoginForm({ info }: { info: ServiceInfo }) {
       setInlineError(result.error);
     } else {
       setInlineError(null);
-      window.location.href = info.redirects.login;
+      window.location.href = returnTo;
     }
   };
 
