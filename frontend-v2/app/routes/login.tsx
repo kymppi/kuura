@@ -39,7 +39,7 @@ export default function Login() {
 
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const returnTo = searchParams.get('return_to') || '/';
+  const returnTo = searchParams.get('return_to') || '/home';
 
   return (
     <LoginLayout>
