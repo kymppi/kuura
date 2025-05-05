@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/kymppi/kuura/internal/constants"
 	"github.com/kymppi/kuura/internal/db_gen"
 	"github.com/kymppi/kuura/internal/enums/instance_setting"
 	"github.com/kymppi/kuura/internal/errcode"
@@ -19,6 +19,28 @@ import (
 
 const KUURA_AUDIENCE = "kuura"
 
+func serviceToModel(service db_gen.Service) (*models.AppService, error) {
+	id, err := utils.PgTypeUUIDToUUID(service.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse uuid from db: %w", err)
+	}
+
+	return &models.AppService{
+		Id:                      id,
+		JWTAudience:             service.JwtAudience,
+		CreatedAt:               service.CreatedAt.Time,
+		ModifiedAt:              service.ModifiedAt,
+		Name:                    service.Name,
+		Description:             service.Description.String,
+		ContactName:             service.ContactName,
+		ContactEmail:            service.ContactEmail,
+		LoginRedirect:           service.LoginRedirect,
+		AccessTokenDuration:     time.Duration(service.AccessTokenDuration) * time.Second,
+		AccessTokenCookieDomain: service.ApiDomain,
+		AccessTokenCookie:       service.AccessTokenCookie,
+	}, nil
+}
+
 func (m *ServiceManager) CreateService(
 	ctx context.Context,
 	name string,
@@ -27,9 +49,8 @@ func (m *ServiceManager) CreateService(
 	loginRedirect string,
 ) (*uuid.UUID, error) {
 	id, err := uuid.NewV7()
-
 	if err != nil {
-		return nil, handleAppServiceError("CreateService", err, nil)
+		return nil, fmt.Errorf("failed to generate uuid: %w", err)
 	}
 
 	err = m.db.CreateAppService(ctx, db_gen.CreateAppServiceParams{
@@ -41,7 +62,7 @@ func (m *ServiceManager) CreateService(
 	})
 
 	if err != nil {
-		return nil, handleAppServiceError("CreateService", err, &id)
+		return nil, fmt.Errorf("failed to create service: %w", err)
 	}
 
 	return &id, nil
@@ -50,22 +71,10 @@ func (m *ServiceManager) CreateService(
 func (m *ServiceManager) GetService(ctx context.Context, id uuid.UUID) (*models.AppService, error) {
 	data, err := m.db.GetAppService(ctx, utils.UUIDToPgType(id))
 	if err != nil {
-		return nil, handleAppServiceError("GetService", err, &id)
+		return nil, fmt.Errorf("failed to get service: %w", err)
 	}
-	return &models.AppService{
-		Id:                      id,
-		JWTAudience:             data.JwtAudience,
-		CreatedAt:               data.CreatedAt.Time,
-		ModifiedAt:              data.ModifiedAt,
-		Name:                    data.Name,
-		Description:             data.Description.String,
-		ContactName:             data.ContactName,
-		ContactEmail:            data.ContactEmail,
-		LoginRedirect:           data.LoginRedirect,
-		AccessTokenDuration:     time.Duration(data.AccessTokenDuration) * time.Second,
-		AccessTokenCookieDomain: data.ApiDomain,
-		AccessTokenCookie:       data.AccessTokenCookie,
-	}, nil
+
+	return serviceToModel(data)
 }
 
 func (m *ServiceManager) GetInternalKuuraService(ctx context.Context) (*models.AppService, error) {
@@ -90,59 +99,37 @@ func (m *ServiceManager) GetInternalKuuraService(ctx context.Context) (*models.A
 func (m *ServiceManager) GetServices(ctx context.Context) ([]*models.AppService, error) {
 	data, err := m.db.GetAppServices(ctx)
 	if err != nil {
-		return nil, handleAppServiceError("GetServices", err, nil)
+		return nil, fmt.Errorf("failed to get services: %w", err)
 	}
 
-	var result []*models.AppService
-	for _, row := range data {
-		result = append(result, &models.AppService{
-			Id:                      row.ID.Bytes,
-			JWTAudience:             row.JwtAudience,
-			CreatedAt:               row.CreatedAt.Time,
-			ModifiedAt:              row.ModifiedAt,
-			Name:                    row.Name,
-			Description:             row.Description.String,
-			ContactName:             row.ContactName,
-			ContactEmail:            row.ContactEmail,
-			LoginRedirect:           row.LoginRedirect,
-			AccessTokenDuration:     time.Duration(row.AccessTokenDuration) * time.Second,
-			AccessTokenCookieDomain: row.ApiDomain,
-			AccessTokenCookie:       row.AccessTokenCookie,
-		})
-	}
-
-	return result, nil
+	return utils.MapSliceE(data, serviceToModel)
 }
 
 func (m *ServiceManager) DeleteService(ctx context.Context, id uuid.UUID) error {
 	err := m.db.DeleteAppService(ctx, utils.UUIDToPgType(id))
 
-	return handleAppServiceError("DeleteService", err, &id)
+	return fmt.Errorf("failed to delete service: %w", err)
 }
 
-func handleAppServiceError(operation string, err error, id *uuid.UUID) error {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		baseMsg := operation
-		if id != nil {
-			baseMsg += fmt.Sprintf(" (ID: %s)", id)
-		}
-
-		switch pgErr.Code {
-		case pgerrcode.UniqueViolation:
-			return fmt.Errorf("%s: already exists: %w", baseMsg, err)
-		case pgerrcode.NoData:
-			return fmt.Errorf("%s: not found: %w", baseMsg, err)
-		default:
-			return fmt.Errorf("%s: database error (code %s): %w", baseMsg, pgErr.Code, err)
-		}
+func (m *ServiceManager) UpdateService(ctx context.Context, service *models.AppService) error {
+	if service == nil {
+		return errors.New("provided service is nil")
 	}
 
-	baseMsg := operation
-	if id != nil {
-		baseMsg += fmt.Sprintf(" (ID: %s)", id)
-	}
-	return fmt.Errorf("%s: error occurred: %w", baseMsg, err)
+	return m.db.UpdateService(ctx, db_gen.UpdateServiceParams{
+		ID:          utils.UUIDToPgType(service.Id),
+		JwtAudience: service.JWTAudience,
+		Name:        service.Name,
+		Description: pgtype.Text{
+			String: service.Description,
+			Valid:  service.Description != "",
+		},
+		AccessTokenDuration: int32(service.AccessTokenDuration.Seconds()),
+		AccessTokenCookie:   service.AccessTokenCookie,
+		LoginRedirect:       service.LoginRedirect,
+		ContactName:         service.ContactName,
+		ContactEmail:        service.ContactEmail,
+	})
 }
 
 func (m *ServiceManager) CreateInternalServiceIfNotExists(ctx context.Context, publicKuuraDomain string) error {
@@ -163,11 +150,7 @@ func (m *ServiceManager) CreateInternalServiceIfNotExists(ctx context.Context, p
 		}
 
 		if possibleService != nil {
-			// service exists
-			//TODO: check if domain is the same, if not -> update
-			//TODO: make sure the cookie is correct
-			//TODO: make sure the redirect is correct at /home
-			return nil
+			return m.VerifyServiceSettingsOrUpdate(ctx, existingServiceUUID, publicKuuraDomain)
 		}
 	}
 
@@ -178,6 +161,44 @@ func (m *ServiceManager) CreateInternalServiceIfNotExists(ctx context.Context, p
 
 	if err := m.settings.SaveValue(ctx, instance_setting.InternalServiceId, newServiceUUID.String()); err != nil {
 		return err
+	}
+
+	return m.VerifyServiceSettingsOrUpdate(ctx, *newServiceUUID, publicKuuraDomain)
+}
+
+func (m *ServiceManager) VerifyServiceSettingsOrUpdate(ctx context.Context, existingServiceUUID uuid.UUID, publicKuuraDomain string) error {
+	service, err := m.GetService(ctx, existingServiceUUID)
+	if err != nil {
+		return err
+	}
+
+	needsUpdate := false
+	updatedService := *service
+
+	if service.JWTAudience != KUURA_AUDIENCE {
+		updatedService.JWTAudience = KUURA_AUDIENCE
+		needsUpdate = true
+	}
+
+	if service.Name != "Kuura" {
+		updatedService.Name = "Kuura"
+		needsUpdate = true
+	}
+
+	expectedCookie := constants.KUURA_ACCESS_TOKEN_COOKIE
+	if service.AccessTokenCookie != expectedCookie {
+		updatedService.AccessTokenCookie = expectedCookie
+		needsUpdate = true
+	}
+
+	expectedRedirect := fmt.Sprintf("https://%s/home", publicKuuraDomain)
+	if service.LoginRedirect != expectedRedirect {
+		updatedService.LoginRedirect = expectedRedirect
+		needsUpdate = true
+	}
+
+	if needsUpdate {
+		return m.UpdateService(ctx, &updatedService)
 	}
 
 	return nil

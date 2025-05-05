@@ -7,16 +7,13 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/kymppi/kuura/internal/constants"
 	"github.com/kymppi/kuura/internal/errcode"
 	"github.com/kymppi/kuura/internal/errs"
 	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/users"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
-
-const REFRESH_TOKEN_COOKIE = "kuura_refresh"
-const SESSION_COOKIE = "kuura_session"
-const KUURA_ACCESS_TOKEN_COOKIE = "kuura_access"
 
 type srpClientBegin struct {
 	Data string `json:"data"`
@@ -137,16 +134,16 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserService, publicKuuraDomain string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// read session_id, refresh_token cookies
-		sessionCookie, err := r.Cookie(SESSION_COOKIE)
+		sessionCookie, err := r.Cookie(constants.SESSION_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", SESSION_COOKIE)).WithMetadata("cookie", SESSION_COOKIE))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.SESSION_COOKIE)).WithMetadata("cookie", constants.SESSION_COOKIE))
 			return
 		}
 		sessionId := sessionCookie.Value
 
-		refreshCookie, err := r.Cookie(REFRESH_TOKEN_COOKIE)
+		refreshCookie, err := r.Cookie(constants.REFRESH_TOKEN_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", REFRESH_TOKEN_COOKIE))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", constants.REFRESH_TOKEN_COOKIE))
 			return
 		}
 		initialRefreshToken := refreshCookie.Value
@@ -176,9 +173,9 @@ func V1_ME(logger *slog.Logger, users *users.UserService, jwkManager *jwks.JWKMa
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			accessCookie, err := r.Cookie(KUURA_ACCESS_TOKEN_COOKIE)
+			accessCookie, err := r.Cookie(constants.KUURA_ACCESS_TOKEN_COOKIE)
 			if err != nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", KUURA_ACCESS_TOKEN_COOKIE)))
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.KUURA_ACCESS_TOKEN_COOKIE)))
 				return
 			}
 			token := accessCookie.Value
@@ -254,7 +251,7 @@ func extractServiceIdFromToken(tokenString string) (*uuid.UUID, error) {
 func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.TokenInfo, publicKuuraDomain string) {
 	// refresh token
 	http.SetCookie(w, &http.Cookie{
-		Name:     REFRESH_TOKEN_COOKIE,
+		Name:     constants.REFRESH_TOKEN_COOKIE,
 		Value:    tokenInfo.RefreshToken,
 		Path:     "/v1/user/access",
 		MaxAge:   60 * 60 * 24 * 7, // week in seconds
@@ -266,7 +263,7 @@ func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.To
 
 	// session
 	http.SetCookie(w, &http.Cookie{
-		Name:     SESSION_COOKIE,
+		Name:     constants.SESSION_COOKIE,
 		Value:    sessionId,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24 * 30, // month in seconds
