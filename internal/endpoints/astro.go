@@ -13,7 +13,7 @@ import (
 
 func AstroHandler(logger *slog.Logger, files embed.FS) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		filesystem, err := fs.Sub(files, "frontend/dist")
+		filesystem, err := fs.Sub(files, "frontend-v2/dist")
 		if err != nil {
 			http.Error(w, "Failed to access the directory", http.StatusInternalServerError)
 			return

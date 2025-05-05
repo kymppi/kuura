@@ -16,9 +16,9 @@ var (
 	Branch string
 )
 
-//go:generate sh -c "cd frontend && pnpm install"
-//go:generate sh -c "cd frontend && pnpm run build"
-//go:embed frontend/dist/*
+//go:generate sh -c "cd frontend-v2 && pnpm install"
+//go:generate sh -c "cd frontend-v2 && pnpm run build"
+//go:embed frontend-v2/dist/*
 var frontendDist embed.FS
 
 func main() {
