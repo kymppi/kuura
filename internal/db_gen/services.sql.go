@@ -12,15 +12,16 @@ import (
 )
 
 const createAppService = `-- name: CreateAppService :exec
-INSERT INTO services (id, jwt_audience, name, api_domain)
-VALUES ($1, $2, $3, $4)
+INSERT INTO services (id, jwt_audience, name, api_domain, login_redirect)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateAppServiceParams struct {
-	ID          pgtype.UUID `json:"id"`
-	JwtAudience string      `json:"jwt_audience"`
-	Name        string      `json:"name"`
-	ApiDomain   string      `json:"api_domain"`
+	ID            pgtype.UUID `json:"id"`
+	JwtAudience   string      `json:"jwt_audience"`
+	Name          string      `json:"name"`
+	ApiDomain     string      `json:"api_domain"`
+	LoginRedirect string      `json:"login_redirect"`
 }
 
 func (q *Queries) CreateAppService(ctx context.Context, arg CreateAppServiceParams) error {
@@ -29,6 +30,7 @@ func (q *Queries) CreateAppService(ctx context.Context, arg CreateAppServicePara
 		arg.JwtAudience,
 		arg.Name,
 		arg.ApiDomain,
+		arg.LoginRedirect,
 	)
 	return err
 }
@@ -44,7 +46,7 @@ func (q *Queries) DeleteAppService(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getAppService = `-- name: GetAppService :one
-SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain, contact_name, contact_email, login_redirect FROM services
+SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain, contact_name, contact_email, login_redirect, access_token_duration, access_token_cookie FROM services
 WHERE id = $1
 `
 
@@ -62,12 +64,14 @@ func (q *Queries) GetAppService(ctx context.Context, id pgtype.UUID) (Service, e
 		&i.ContactName,
 		&i.ContactEmail,
 		&i.LoginRedirect,
+		&i.AccessTokenDuration,
+		&i.AccessTokenCookie,
 	)
 	return i, err
 }
 
 const getAppServices = `-- name: GetAppServices :many
-SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain, contact_name, contact_email, login_redirect FROM services
+SELECT id, jwt_audience, created_at, modified_at, name, description, api_domain, contact_name, contact_email, login_redirect, access_token_duration, access_token_cookie FROM services
 `
 
 func (q *Queries) GetAppServices(ctx context.Context) ([]Service, error) {
@@ -90,6 +94,8 @@ func (q *Queries) GetAppServices(ctx context.Context) ([]Service, error) {
 			&i.ContactName,
 			&i.ContactEmail,
 			&i.LoginRedirect,
+			&i.AccessTokenDuration,
+			&i.AccessTokenCookie,
 		); err != nil {
 			return nil, err
 		}
@@ -99,4 +105,46 @@ func (q *Queries) GetAppServices(ctx context.Context) ([]Service, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateService = `-- name: UpdateService :exec
+UPDATE services
+SET 
+    jwt_audience = COALESCE($2, jwt_audience),
+    modified_at = NOW(),
+    name = COALESCE($3, name),
+    description = COALESCE($4, description),
+    access_token_duration = COALESCE($5, access_token_duration),
+    access_token_cookie = COALESCE($6, access_token_cookie),
+    login_redirect = COALESCE($7, login_redirect),
+    contact_name = COALESCE($8, contact_name),
+    contact_email = COALESCE($9, contact_email)
+WHERE id = $1
+`
+
+type UpdateServiceParams struct {
+	ID                  pgtype.UUID `json:"id"`
+	JwtAudience         string      `json:"jwt_audience"`
+	Name                string      `json:"name"`
+	Description         pgtype.Text `json:"description"`
+	AccessTokenDuration int32       `json:"access_token_duration"`
+	AccessTokenCookie   string      `json:"access_token_cookie"`
+	LoginRedirect       string      `json:"login_redirect"`
+	ContactName         string      `json:"contact_name"`
+	ContactEmail        string      `json:"contact_email"`
+}
+
+func (q *Queries) UpdateService(ctx context.Context, arg UpdateServiceParams) error {
+	_, err := q.db.Exec(ctx, updateService,
+		arg.ID,
+		arg.JwtAudience,
+		arg.Name,
+		arg.Description,
+		arg.AccessTokenDuration,
+		arg.AccessTokenCookie,
+		arg.LoginRedirect,
+		arg.ContactName,
+		arg.ContactEmail,
+	)
+	return err
 }

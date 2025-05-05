@@ -36,39 +36,46 @@ const (
 	// Category 01: M2M
 
 	// Category 02: Users
-	MissingCookie ErrorCode = "K0201"
-	UserNotFound  ErrorCode = "K0202"
+	MissingCookie    ErrorCode = "K0201"
+	UserNotFound     ErrorCode = "K0202"
+	AlreadyLoggingIn ErrorCode = "K0203"
 
 	// Category 03: JWKS
 	InvalidServiceId ErrorCode = "K0301"
+
+	// Category 04: Instance settings
+	SettingNotFound ErrorCode = "K0401"
+
+	// Category 05: Services
+	ServiceNotFound ErrorCode = "K0501"
 )
 
 var errorDetailsMap = map[ErrorCode]ErrorDetail{
 	// Category 00: General
 	InternalServerError: {
 		Code:        InternalServerError,
-		StatusCode:  500,
+		StatusCode:  http.StatusInternalServerError,
 		Description: "Internal server error",
 	},
 	Timeout: {
 		Code:        Timeout,
-		StatusCode:  408,
+		StatusCode:  http.StatusRequestTimeout,
 		Description: "Request timed out",
 	},
 	InvalidArgumentError: {
 		Code:        InvalidArgumentError,
-		StatusCode:  400,
+		StatusCode:  http.StatusBadRequest,
 		Description: "Invalid request body",
 	},
 	Unauthorized: {
 		Code:        Unauthorized,
-		StatusCode:  401,
+		StatusCode:  http.StatusUnauthorized,
 		Description: "Unauthorized",
 	},
 
 	// Category 01: M2M
 
-	// Category 02:
+	// Category 02: Users
 	MissingCookie: {
 		Code:        MissingCookie,
 		StatusCode:  http.StatusBadRequest,
@@ -79,11 +86,30 @@ var errorDetailsMap = map[ErrorCode]ErrorDetail{
 		StatusCode:  http.StatusNotFound,
 		Description: "User not found.",
 	},
+	AlreadyLoggingIn: {
+		Code:        AlreadyLoggingIn,
+		StatusCode:  http.StatusConflict,
+		Description: "You're already trying to login from another device.",
+	},
 
 	// Category 03: JWKS
 	InvalidServiceId: {
 		Code:        InvalidServiceId,
 		StatusCode:  http.StatusBadRequest,
 		Description: "The service_id is not a valid uuid.",
+	},
+
+	// Category 04: Instance settings
+	SettingNotFound: {
+		Code:        SettingNotFound,
+		StatusCode:  http.StatusNotFound,
+		Description: "Setting not found.",
+	},
+
+	// Category 05: Services
+	ServiceNotFound: {
+		Code:        ServiceNotFound,
+		StatusCode:  http.StatusNotFound,
+		Description: "Service not found.",
 	},
 }

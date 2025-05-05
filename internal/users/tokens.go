@@ -51,15 +51,24 @@ func (s *UserService) CreateSession(ctx context.Context, uid string, serviceId u
 	return id, refreshToken, nil
 }
 
-func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, refreshToken string) (accessToken string, newRefreshToken string, serviceDomain string, err error) {
+type TokenInfo struct {
+	AccessToken             string
+	AccessTokenDuration     time.Duration
+	ServiceAccessCookieName string
+
+	RefreshToken  string
+	ServiceDomain string
+}
+
+func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, refreshToken string) (*TokenInfo, error) {
 	session, err := s.GetSession(ctx, sessionId)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get session: %w", err)
+		return nil, fmt.Errorf("failed to get session: %w", err)
 	}
 
 	roles, err := s.db.GetUserRoles(ctx, session.UserID)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get user roles: %w", err)
+		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 
 	tokenValid, err := s.validateRefreshToken(session, refreshToken)
@@ -70,29 +79,29 @@ func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, r
 		}
 
 		s.logger.Error("Failed to validate refresh token", logFields...)
-		return "", "", "", errors.New("invalid refresh token")
-	}
-
-	service, err := s.db.GetAppService(ctx, session.ServiceID)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get service: %w", err)
-	}
-
-	err = s.db.UpdateUserSessionLastAuthenticatedAt(ctx, sessionId)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to update session last authentication date: %w", err)
+		return nil, errors.New("invalid refresh token")
 	}
 
 	serviceId, err := utils.PgTypeUUIDToUUID(session.ServiceID)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to parse session service id: %w", err)
+		return nil, fmt.Errorf("failed to parse session service id: %w", err)
+	}
+
+	service, err := s.services.GetService(ctx, serviceId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get service: %w", err)
+	}
+
+	err = s.db.UpdateUserSessionLastAuthenticatedAt(ctx, sessionId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update session last authentication date: %w", err)
 	}
 
 	// important that we try to generate the jwt BEFORE updating refresh token, if it fails then the client can't even retry
-	exp := time.Now().Add(15 * time.Minute) //TODO: move to services db table
+	exp := time.Now().Add(service.AccessTokenDuration)
 
 	token, err := jwt.NewBuilder().
-		Audience([]string{service.JwtAudience}).
+		Audience([]string{service.JWTAudience}).
 		Issuer(s.jwtIssuer).
 		Subject(session.UserID).
 		IssuedAt(time.Now()).
@@ -104,41 +113,45 @@ func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, r
 		Build()
 
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to build jwt: %w", err)
+		return nil, fmt.Errorf("failed to build jwt: %w", err)
 	}
 
 	signingKey, err := s.jwkManager.GetSigningKey(ctx, serviceId)
-
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get signing key: %w", err)
+		return nil, fmt.Errorf("failed to get signing key: %w", err)
 	}
 
 	signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.ES384, signingKey))
-
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to sign jwt: %w", err)
+		return nil, fmt.Errorf("failed to sign jwt: %w", err)
 	}
 
-	accessToken = string(signedToken)
+	accessToken := string(signedToken)
 
-	newRefreshToken, err = generateOpaqueToken(32)
+	newRefreshToken, err := generateOpaqueToken(32)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to rotate refresh token: generate opaque token: %w", err)
+		return nil, fmt.Errorf("failed to rotate refresh token: generate opaque token: %w", err)
 	}
 
 	hashedToken, err := s.tokenhasher.HashValue(newRefreshToken)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to hash new refresh token: %w", err)
+		return nil, fmt.Errorf("failed to hash new refresh token: %w", err)
 	}
 
 	if err = s.db.RotateUserSessionRefreshToken(ctx, db_gen.RotateUserSessionRefreshTokenParams{
 		RefreshTokenHash: hashedToken,
 		ID:               sessionId,
 	}); err != nil {
-		return "", "", "", fmt.Errorf("failed to rotate refresh token: %w", err)
+		return nil, fmt.Errorf("failed to rotate refresh token: %w", err)
 	}
 
-	return accessToken, newRefreshToken, service.ApiDomain, nil
+	return &TokenInfo{
+		AccessToken:             accessToken,
+		RefreshToken:            newRefreshToken,
+		ServiceDomain:           service.AccessTokenCookieDomain,
+		ServiceAccessCookieName: service.AccessTokenCookie,
+		AccessTokenDuration:     service.AccessTokenDuration,
+	}, nil
 }
 
 func (s *UserService) GetSession(ctx context.Context, sessionId string) (*db_gen.UserSession, error) {

@@ -6,6 +6,7 @@ import (
 	tokenhasher "github.com/kymppi/kuura/internal/argon2"
 	"github.com/kymppi/kuura/internal/db_gen"
 	"github.com/kymppi/kuura/internal/jwks"
+	"github.com/kymppi/kuura/internal/services"
 )
 
 type UserService struct {
@@ -14,9 +15,10 @@ type UserService struct {
 	tokenhasher *tokenhasher.TokenHasher
 	jwtIssuer   string
 	jwkManager  *jwks.JWKManager
+	services    *services.ServiceManager
 }
 
-func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, jwkManager *jwks.JWKManager) *UserService {
+func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, jwkManager *jwks.JWKManager, services *services.ServiceManager) *UserService {
 	return &UserService{
 		logger: logger,
 		db:     db,
@@ -29,5 +31,6 @@ func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, j
 		}),
 		jwtIssuer:  jwtIssuer,
 		jwkManager: jwkManager,
+		services:   services,
 	}
 }

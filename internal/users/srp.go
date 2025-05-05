@@ -71,7 +71,16 @@ func (s *UserService) ClientBegin(ctx context.Context, creds string) (string, er
 
 	creds = srv.Credentials()
 
-	if err = s.db.SaveSRPServer(ctx, db_gen.SaveSRPServerParams{
+	expired, err := s.db.CheckSRPServerNotExpired(ctx, uid)
+	if err != nil {
+		return "", fmt.Errorf("failed to check if user SRP is expired: %w", err)
+	}
+
+	if expired {
+		return "", errs.New(errcode.AlreadyLoggingIn, errors.New("SRP server has not expired yet"))
+	}
+
+	if err := s.db.UpsertSRPServer(ctx, db_gen.UpsertSRPServerParams{
 		Uid:           uid,
 		EncodedServer: []byte(srv.Marshal()),
 		ExpiresAt: pgtype.Timestamptz{
@@ -79,7 +88,7 @@ func (s *UserService) ClientBegin(ctx context.Context, creds string) (string, er
 			Valid: true,
 		},
 	}); err != nil {
-		return "", fmt.Errorf("failed to store SRP server: %w", err)
+		return "", fmt.Errorf("failed to upsert user srp: %w", err)
 	}
 
 	return creds, nil

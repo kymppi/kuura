@@ -22,7 +22,9 @@ export default function LoginPage() {
           const data = await getServiceInfo(serviceId);
           setServiceData(data);
         } else {
-          setError('No service ID provided');
+          setIsLoading(true);
+          const data = await getServiceInfo();
+          setServiceData(data);
         }
       } catch (err) {
         setError('Failed to load service information');
@@ -89,15 +91,7 @@ function LoginForm({ info }: { info: ServiceInfo }) {
       return;
     }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const serviceId = urlParams.get('service');
-
-    if (!serviceId) {
-      setInlineError('Missing target service');
-      return;
-    }
-
-    const result = await client.login(serviceId, username, password);
+    const result = await client.login(info.id, username, password);
 
     if (!result.success) {
       setInlineError(result.error);

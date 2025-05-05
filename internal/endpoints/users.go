@@ -7,16 +7,13 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/kymppi/kuura/internal/constants"
 	"github.com/kymppi/kuura/internal/errcode"
 	"github.com/kymppi/kuura/internal/errs"
 	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/users"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
-
-const ACCESS_TOKEN_COOKIE = "kuura_access"
-const REFRESH_TOKEN_COOKIE = "kuura_refresh"
-const SESSION_COOKIE = "kuura_session"
 
 type srpClientBegin struct {
 	Data string `json:"data"`
@@ -110,50 +107,19 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 				return
 			}
 
-			sessionId, refreshToken, err := userService.CreateSession(ctx, uid, uuid.MustParse(payload.TargetService))
+			sessionId, initialRefreshToken, err := userService.CreateSession(ctx, uid, uuid.MustParse(payload.TargetService))
 			if err != nil {
 				handleErr(w, r, logger, err)
 				return
 			}
 
-			accessToken, refreshToken, serviceDomain, err := userService.CreateAccessToken(ctx, sessionId, refreshToken)
+			tokenInfo, err := userService.CreateAccessToken(ctx, sessionId, initialRefreshToken)
 			if err != nil {
 				handleErr(w, r, logger, err)
 				return
 			}
 
-			http.SetCookie(w, &http.Cookie{
-				Name:     REFRESH_TOKEN_COOKIE,
-				Value:    refreshToken,
-				Path:     "/v1/user/access",
-				MaxAge:   60 * 60 * 24 * 7, // week in seconds
-				HttpOnly: true,
-				Secure:   true,
-				SameSite: http.SameSiteStrictMode, // path must match
-				Domain:   publicKuuraDomain,
-			})
-
-			http.SetCookie(w, &http.Cookie{
-				Name:     ACCESS_TOKEN_COOKIE,
-				Value:    accessToken,
-				Path:     "/",
-				MaxAge:   60 * 60, // hour in seconds
-				HttpOnly: true,
-				Secure:   true,
-				SameSite: http.SameSiteLaxMode,
-				Domain:   serviceDomain,
-			})
-
-			http.SetCookie(w, &http.Cookie{
-				Name:     SESSION_COOKIE,
-				Value:    sessionId,
-				Path:     "/",
-				MaxAge:   60 * 60 * 24 * 7, // hour in seconds
-				HttpOnly: false,
-				Secure:   true,
-				SameSite: http.SameSiteLaxMode,
-				Domain:   publicKuuraDomain,
-			})
+			setAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
 
 			data := response{
 				Success: true,
@@ -168,58 +134,27 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserService, publicKuuraDomain string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// read session_id, refresh_token cookies
-		sessionCookie, err := r.Cookie(SESSION_COOKIE)
+		sessionCookie, err := r.Cookie(constants.SESSION_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", SESSION_COOKIE)).WithMetadata("cookie", SESSION_COOKIE))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.SESSION_COOKIE)).WithMetadata("cookie", constants.SESSION_COOKIE))
 			return
 		}
 		sessionId := sessionCookie.Value
 
-		refreshCookie, err := r.Cookie(REFRESH_TOKEN_COOKIE)
+		refreshCookie, err := r.Cookie(constants.REFRESH_TOKEN_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", REFRESH_TOKEN_COOKIE))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", constants.REFRESH_TOKEN_COOKIE))
 			return
 		}
-		refreshToken := refreshCookie.Value
+		initialRefreshToken := refreshCookie.Value
 
-		accessToken, refreshToken, serviceDomain, err := userService.CreateAccessToken(r.Context(), sessionId, refreshToken)
+		tokenInfo, err := userService.CreateAccessToken(r.Context(), sessionId, initialRefreshToken)
 		if err != nil {
 			handleErr(w, r, logger, err)
 			return
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     REFRESH_TOKEN_COOKIE,
-			Value:    refreshToken,
-			Path:     "/v1/user/access",
-			MaxAge:   60 * 60 * 24 * 7, // week in seconds
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode, // path must match
-			Domain:   publicKuuraDomain,
-		})
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     ACCESS_TOKEN_COOKIE,
-			Value:    accessToken,
-			Path:     "/",
-			MaxAge:   60 * 60, // hour in seconds
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-			Domain:   serviceDomain,
-		})
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     SESSION_COOKIE,
-			Value:    sessionId,
-			Path:     "/",
-			MaxAge:   60 * 60 * 24 * 7, // hour in seconds
-			HttpOnly: false,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-			Domain:   publicKuuraDomain,
-		})
+		setAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
 
 		safeEncode(w, r, logger, http.StatusOK, map[string]any{
 			"success": true,
@@ -238,9 +173,9 @@ func V1_ME(logger *slog.Logger, users *users.UserService, jwkManager *jwks.JWKMa
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			accessCookie, err := r.Cookie(ACCESS_TOKEN_COOKIE)
+			accessCookie, err := r.Cookie(constants.KUURA_ACCESS_TOKEN_COOKIE)
 			if err != nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", ACCESS_TOKEN_COOKIE)))
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.KUURA_ACCESS_TOKEN_COOKIE)))
 				return
 			}
 			token := accessCookie.Value
@@ -250,7 +185,7 @@ func V1_ME(logger *slog.Logger, users *users.UserService, jwkManager *jwks.JWKMa
 				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
 				return
 			} else if serviceId == nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token without error")))
 				return
 			}
 
@@ -311,4 +246,42 @@ func extractServiceIdFromToken(tokenString string) (*uuid.UUID, error) {
 	}
 
 	return &parsedUUID, nil
+}
+
+func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.TokenInfo, publicKuuraDomain string) {
+	// refresh token
+	http.SetCookie(w, &http.Cookie{
+		Name:     constants.REFRESH_TOKEN_COOKIE,
+		Value:    tokenInfo.RefreshToken,
+		Path:     "/v1/user/access",
+		MaxAge:   60 * 60 * 24 * 7, // week in seconds
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode, // path must match
+		Domain:   publicKuuraDomain,
+	})
+
+	// session
+	http.SetCookie(w, &http.Cookie{
+		Name:     constants.SESSION_COOKIE,
+		Value:    sessionId,
+		Path:     "/",
+		MaxAge:   60 * 60 * 24 * 30, // month in seconds
+		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   publicKuuraDomain,
+	})
+
+	// service specific access token
+	http.SetCookie(w, &http.Cookie{
+		Name:     tokenInfo.ServiceAccessCookieName,
+		Value:    tokenInfo.AccessToken,
+		Path:     "/",
+		MaxAge:   int(tokenInfo.AccessTokenDuration.Seconds()),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   tokenInfo.ServiceDomain,
+	})
 }

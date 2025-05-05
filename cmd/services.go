@@ -14,6 +14,7 @@ import (
 	kuura "github.com/kymppi/kuura/internal"
 	"github.com/kymppi/kuura/internal/models"
 	"github.com/kymppi/kuura/internal/services"
+	"github.com/kymppi/kuura/internal/settings"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -35,9 +36,10 @@ func runServices(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	var (
-		name      string
-		audience  string
-		apiDomain string
+		name          string
+		audience      string
+		apiDomain     string
+		loginRedirect string
 	)
 
 	cmd := &cobra.Command{
@@ -53,9 +55,10 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			serviceManager := services.NewServiceManager(queries)
+			settingsService := settings.NewSettingsService(logger, queries)
+			serviceManager := services.NewServiceManager(logger, queries, settingsService)
 
-			id, err := serviceManager.CreateService(ctx, name, audience, apiDomain)
+			id, err := serviceManager.CreateService(ctx, name, audience, apiDomain, loginRedirect)
 			if err != nil {
 				logger.Error("Failed to create service", slog.String("error", err.Error()))
 				return
@@ -70,10 +73,12 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Name of the service")
 	cmd.Flags().StringVarP(&audience, "audience", "a", "", "JWT audience for the service")
 	cmd.Flags().StringVarP(&apiDomain, "apiDomain", "d", "", "The domain which should be used in the access_token cookie")
+	cmd.Flags().StringVarP(&loginRedirect, "loginRedirect", "r", "", "The full url of the page where user should be redirect to.")
 
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("audience")
 	cmd.MarkFlagRequired("apiDomain")
+	cmd.MarkFlagRequired("loginRedirect")
 
 	return cmd
 }
@@ -99,7 +104,8 @@ func serviceDelete(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			serviceManager := services.NewServiceManager(queries)
+			settingsService := settings.NewSettingsService(logger, queries)
+			serviceManager := services.NewServiceManager(logger, queries, settingsService)
 
 			err = serviceManager.DeleteService(ctx, serviceId)
 			if err != nil {
@@ -130,7 +136,8 @@ func serviceList(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
-			serviceManager := services.NewServiceManager(queries)
+			settingsService := settings.NewSettingsService(logger, queries)
+			serviceManager := services.NewServiceManager(logger, queries, settingsService)
 
 			services, err := serviceManager.GetServices(ctx)
 			if err != nil {

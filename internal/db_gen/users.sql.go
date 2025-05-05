@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkSRPServerNotExpired = `-- name: CheckSRPServerNotExpired :one
+SELECT EXISTS (
+    SELECT 1 FROM user_srp
+    WHERE uid = $1 AND expires_at > CURRENT_TIMESTAMP
+) AS record_not_expired
+`
+
+func (q *Queries) CheckSRPServerNotExpired(ctx context.Context, uid string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkSRPServerNotExpired, uid)
+	var record_not_expired bool
+	err := row.Scan(&record_not_expired)
+	return record_not_expired, err
+}
+
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (id, username, hashed_username, encoded_verifier)
 VALUES ($1, $2, $3, $4)
@@ -171,22 +185,6 @@ func (q *Queries) RotateUserSessionRefreshToken(ctx context.Context, arg RotateU
 	return err
 }
 
-const saveSRPServer = `-- name: SaveSRPServer :exec
-INSERT INTO user_srp (uid, encoded_server, expires_at)
-VALUES ($1, $2, $3)
-`
-
-type SaveSRPServerParams struct {
-	Uid           string             `json:"uid"`
-	EncodedServer []byte             `json:"encoded_server"`
-	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
-}
-
-func (q *Queries) SaveSRPServer(ctx context.Context, arg SaveSRPServerParams) error {
-	_, err := q.db.Exec(ctx, saveSRPServer, arg.Uid, arg.EncodedServer, arg.ExpiresAt)
-	return err
-}
-
 const updateUserLastSignInDate = `-- name: UpdateUserLastSignInDate :exec
 UPDATE users
 SET last_login_at = NOW()
@@ -206,5 +204,23 @@ WHERE id = $1
 
 func (q *Queries) UpdateUserSessionLastAuthenticatedAt(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, updateUserSessionLastAuthenticatedAt, id)
+	return err
+}
+
+const upsertSRPServer = `-- name: UpsertSRPServer :exec
+INSERT INTO user_srp (uid, encoded_server, expires_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (uid) DO UPDATE
+SET encoded_server = EXCLUDED.encoded_server, expires_at = EXCLUDED.expires_at
+`
+
+type UpsertSRPServerParams struct {
+	Uid           string             `json:"uid"`
+	EncodedServer []byte             `json:"encoded_server"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) UpsertSRPServer(ctx context.Context, arg UpsertSRPServerParams) error {
+	_, err := q.db.Exec(ctx, upsertSRPServer, arg.Uid, arg.EncodedServer, arg.ExpiresAt)
 	return err
 }

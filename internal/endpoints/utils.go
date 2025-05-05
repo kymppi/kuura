@@ -46,6 +46,7 @@ func handleErr(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err 
 		logger.Error("An error occurred",
 			slog.String("error", customErr.Error()),
 			slog.String("code", string(customErr.Code)),
+			slog.String("trace_id", traceId),
 		)
 
 		errorDetail := errcode.GetErrorDetail(customErr.Code)
@@ -58,6 +59,11 @@ func handleErr(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err 
 		})
 		return
 	}
+
+	logger.Error("An unknown error occurred",
+		slog.String("error", err.Error()),
+		slog.String("trace_id", traceId),
+	)
 
 	safeEncode(w, r, logger, 500, &STDErrorResponse{
 		Message:  "Internal server error",

@@ -7,6 +7,8 @@ import (
 	"log/slog"
 
 	kuura "github.com/kymppi/kuura/internal"
+	"github.com/kymppi/kuura/internal/services"
+	"github.com/kymppi/kuura/internal/settings"
 	"github.com/kymppi/kuura/internal/users"
 	"github.com/manifoldco/promptui"
 	"github.com/opencoff/go-srp"
@@ -59,6 +61,8 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			}
 			defer cleanup()
 
+			settingsService := settings.NewSettingsService(logger, queries)
+			serviceManager := services.NewServiceManager(logger, queries, settingsService)
 			jwkManager, err := kuura.InitializeJWKManager(ctx, logger, config, queries)
 			if err != nil {
 				cmd.PrintErrf("Failed to initialize jwk manager: %s", err)
@@ -77,7 +81,7 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 			_, vh := v.Encode()
 
-			userService := users.NewUserService(logger, queries, config.JWT_ISSUER, jwkManager)
+			userService := users.NewUserService(logger, queries, config.JWT_ISSUER, jwkManager, serviceManager)
 
 			uid, err := userService.Register(ctx, username, vh)
 			if err != nil {
