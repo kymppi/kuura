@@ -71,6 +71,20 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 	return err
 }
 
+const getAccessTokenDurationUsingSessionId = `-- name: GetAccessTokenDurationUsingSessionId :one
+SELECT svc.access_token_duration
+FROM services AS svc
+JOIN user_sessions AS us ON us.service_id = svc.id
+WHERE us.id = $1
+`
+
+func (q *Queries) GetAccessTokenDurationUsingSessionId(ctx context.Context, id string) (int32, error) {
+	row := q.db.QueryRow(ctx, getAccessTokenDurationUsingSessionId, id)
+	var access_token_duration int32
+	err := row.Scan(&access_token_duration)
+	return access_token_duration, err
+}
+
 const getAndDeleteSRPServer = `-- name: GetAndDeleteSRPServer :one
 DELETE FROM user_srp
 WHERE uid = $1 AND expires_at > NOW()
@@ -247,4 +261,35 @@ type UpsertSRPServerParams struct {
 func (q *Queries) UpsertSRPServer(ctx context.Context, arg UpsertSRPServerParams) error {
 	_, err := q.db.Exec(ctx, upsertSRPServer, arg.Uid, arg.EncodedServer, arg.ExpiresAt)
 	return err
+}
+
+const useTokenExchangeCode = `-- name: UseTokenExchangeCode :one
+DELETE FROM user_token_code_exchange AS token
+WHERE token.hashed_code = $1
+  AND token.expires_at > NOW()
+  AND token.session_id = session.id
+RETURNING
+    token.session_id,
+    token.encrypted_access_token,
+    token.encrypted_refresh_token,
+    token.encryption_nonce
+`
+
+type UseTokenExchangeCodeRow struct {
+	SessionID             string `json:"session_id"`
+	EncryptedAccessToken  string `json:"encrypted_access_token"`
+	EncryptedRefreshToken string `json:"encrypted_refresh_token"`
+	EncryptionNonce       []byte `json:"encryption_nonce"`
+}
+
+func (q *Queries) UseTokenExchangeCode(ctx context.Context, hashedCode string) (UseTokenExchangeCodeRow, error) {
+	row := q.db.QueryRow(ctx, useTokenExchangeCode, hashedCode)
+	var i UseTokenExchangeCodeRow
+	err := row.Scan(
+		&i.SessionID,
+		&i.EncryptedAccessToken,
+		&i.EncryptedRefreshToken,
+		&i.EncryptionNonce,
+	)
+	return i, err
 }

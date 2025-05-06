@@ -100,6 +100,7 @@ type UserTokenCodeExchange struct {
 	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
 	EncryptedAccessToken  string             `json:"encrypted_access_token"`
 	EncryptedRefreshToken string             `json:"encrypted_refresh_token"`
+	EncryptionNonce       []byte             `json:"encryption_nonce"`
 	CreatedAt             pgtype.Timestamptz `json:"created_at"`
 	HashedCode            string             `json:"hashed_code"`
 }

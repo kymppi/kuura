@@ -104,13 +104,6 @@ func V1_Service_UserTokens(logger *slog.Logger, userService *users.UserService) 
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		pathId := r.PathValue("serviceId")
-		serviceId, err := uuid.Parse(pathId)
-		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.InvalidServiceId, err))
-			return
-		}
-
 		data, err := decodeValid[*v1ServiceUserTokens](r)
 		if err != nil {
 			handleErr(w, r, logger, err)
@@ -120,7 +113,7 @@ func V1_Service_UserTokens(logger *slog.Logger, userService *users.UserService) 
 		var tokenInfo *users.TokenInfoForService
 
 		if data.Code != "" {
-			info, err := userService.ExchangeCodeForTokens(r.Context(), serviceId, data.Code)
+			info, err := userService.ExchangeCodeForTokens(r.Context(), data.Code)
 			if err != nil {
 				handleErr(w, r, logger, err)
 				return
@@ -128,7 +121,7 @@ func V1_Service_UserTokens(logger *slog.Logger, userService *users.UserService) 
 
 			tokenInfo = info
 		} else {
-			info, err := userService.RefreshServiceAccessToken(r.Context(), serviceId, data.SessionId, data.RefreshToken)
+			info, err := userService.RefreshServiceAccessToken(r.Context(), data.SessionId, data.RefreshToken)
 			if err != nil {
 				handleErr(w, r, logger, err)
 				return

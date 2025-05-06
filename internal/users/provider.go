@@ -18,11 +18,12 @@ type UserService struct {
 	jwkManager  *jwks.JWKManager
 	services    *services.ServiceManager
 
-	encryptor     *encrypted_storage.SymmetricKeyEncryptor
-	encryptionKey []byte
+	encryptor              *encrypted_storage.SymmetricKeyEncryptor
+	encryptionKey          []byte
+	tokenCodeHashingSecret []byte
 }
 
-func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, jwkManager *jwks.JWKManager, services *services.ServiceManager, encryptionKey []byte) *UserService {
+func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, jwkManager *jwks.JWKManager, services *services.ServiceManager, encryptionKey []byte, tokenCodeHashingSecret []byte) *UserService {
 	return &UserService{
 		logger: logger,
 		db:     db,
@@ -33,10 +34,11 @@ func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, j
 			SaltLength:  16,
 			KeyLength:   32,
 		}),
-		jwtIssuer:     jwtIssuer,
-		jwkManager:    jwkManager,
-		services:      services,
-		encryptor:     encrypted_storage.NewSymmetricKeyEncryptor(),
-		encryptionKey: encryptionKey,
+		jwtIssuer:              jwtIssuer,
+		jwkManager:             jwkManager,
+		services:               services,
+		encryptor:              encrypted_storage.NewSymmetricKeyEncryptor(),
+		encryptionKey:          encryptionKey,
+		tokenCodeHashingSecret: tokenCodeHashingSecret,
 	}
 }
