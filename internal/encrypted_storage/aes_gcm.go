@@ -1,4 +1,4 @@
-package jwk_storage
+package encrypted_storage
 
 import (
 	"crypto/aes"
