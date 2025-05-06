@@ -9,7 +9,7 @@ import {
 } from '@carbon/react';
 import type React from 'react';
 
-export default function IndexLayoutShell({
+export default function LoginLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -28,17 +28,18 @@ export default function IndexLayoutShell({
                   isActive={isSideNavExpanded}
                   aria-expanded={isSideNavExpanded}
                 />
-                <HeaderName href="/" prefix="KUURA" />
-                {/* <HeaderName href="/" prefix="KUURA">
-                  WELCOME
-                </HeaderName> */}
+                <HeaderName href="/" prefix="KUURA">
+                  User login
+                </HeaderName>
               </Header>
             </>
           )}
         />
       </Theme>
 
-      <Content>{children}</Content>
+      <Content style={{ height: 'calc(100dvh - 48px)', padding: 0 }}>
+        {children}
+      </Content>
     </>
   );
 }

@@ -1,67 +1,13 @@
-import { Button, Form, PasswordInput, Stack, TextInput } from '@carbon/react';
-import { useEffect, useState } from 'react';
+import { Button, PasswordInput, Stack, TextInput } from '@carbon/react';
+import { useState } from 'react';
+import { Form } from 'react-router';
 import { SRPAuthClient } from '../lib/auth.client';
-import { getServiceInfo, type ServiceInfo } from '../lib/service.client';
+import type { ServiceInfo } from '../lib/service.client';
 import { DefaultPrimeField } from '../lib/srp.client';
 
 const client = new SRPAuthClient('', DefaultPrimeField);
 
-export default function LoginPage({ returnTo }: { returnTo: string }) {
-  const [serviceData, setServiceData] = useState<ServiceInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchServiceInfo = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getServiceInfo();
-        setServiceData(data);
-      } catch (err) {
-        setError('Failed to load service information');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchServiceInfo();
-  }, []);
-
-  return (
-    <div
-      style={{
-        display: 'grid',
-        placeItems: 'center',
-        height: '100%',
-        padding: '1rem',
-        backgroundImage: 'url("/login.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '32rem',
-          padding: '1rem',
-          backgroundColor: 'white',
-        }}
-      >
-        {isLoading ? (
-          <p>Loading service information...</p>
-        ) : error ? (
-          <p>{error}</p>
-        ) : serviceData ? (
-          <LoginForm info={serviceData} returnTo={returnTo} />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function LoginForm({
+export default function LoginForm({
   info,
   returnTo,
 }: {
@@ -100,7 +46,7 @@ function LoginForm({
 
   return (
     <Form onSubmit={handleSubmit}>
-      <Stack gap={7}>
+      <Stack gap={8}>
         <Stack gap="0.25rem">
           <h1>Log in to {info.name}</h1>
           <p>
