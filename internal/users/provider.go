@@ -5,6 +5,7 @@ import (
 
 	tokenhasher "github.com/kymppi/kuura/internal/argon2"
 	"github.com/kymppi/kuura/internal/db_gen"
+	"github.com/kymppi/kuura/internal/encrypted_storage"
 	"github.com/kymppi/kuura/internal/jwks"
 	"github.com/kymppi/kuura/internal/services"
 )
@@ -16,9 +17,12 @@ type UserService struct {
 	jwtIssuer   string
 	jwkManager  *jwks.JWKManager
 	services    *services.ServiceManager
+
+	encryptor     *encrypted_storage.SymmetricKeyEncryptor
+	encryptionKey []byte
 }
 
-func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, jwkManager *jwks.JWKManager, services *services.ServiceManager) *UserService {
+func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, jwkManager *jwks.JWKManager, services *services.ServiceManager, encryptionKey []byte) *UserService {
 	return &UserService{
 		logger: logger,
 		db:     db,
@@ -29,8 +33,10 @@ func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, j
 			SaltLength:  16,
 			KeyLength:   32,
 		}),
-		jwtIssuer:  jwtIssuer,
-		jwkManager: jwkManager,
-		services:   services,
+		jwtIssuer:     jwtIssuer,
+		jwkManager:    jwkManager,
+		services:      services,
+		encryptor:     encrypted_storage.NewSymmetricKeyEncryptor(),
+		encryptionKey: encryptionKey,
 	}
 }

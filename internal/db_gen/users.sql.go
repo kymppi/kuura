@@ -169,6 +169,30 @@ func (q *Queries) GetUserSession(ctx context.Context, id string) (UserSession, e
 	return i, err
 }
 
+const insertCodeToSessionTokenExchange = `-- name: InsertCodeToSessionTokenExchange :exec
+INSERT INTO user_token_code_exchange (session_id, expires_at, encrypted_access_token, encrypted_refresh_token, hashed_code)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type InsertCodeToSessionTokenExchangeParams struct {
+	SessionID             string             `json:"session_id"`
+	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
+	EncryptedAccessToken  string             `json:"encrypted_access_token"`
+	EncryptedRefreshToken string             `json:"encrypted_refresh_token"`
+	HashedCode            string             `json:"hashed_code"`
+}
+
+func (q *Queries) InsertCodeToSessionTokenExchange(ctx context.Context, arg InsertCodeToSessionTokenExchangeParams) error {
+	_, err := q.db.Exec(ctx, insertCodeToSessionTokenExchange,
+		arg.SessionID,
+		arg.ExpiresAt,
+		arg.EncryptedAccessToken,
+		arg.EncryptedRefreshToken,
+		arg.HashedCode,
+	)
+	return err
+}
+
 const rotateUserSessionRefreshToken = `-- name: RotateUserSessionRefreshToken :exec
 UPDATE user_sessions
 SET refresh_token_hash = $1

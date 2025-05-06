@@ -60,3 +60,7 @@ WHERE id = $1;
 -- name: GetUser :one
 SELECT id, username, last_login_at FROM users
 WHERE id = $1;
+
+-- name: InsertCodeToSessionTokenExchange :exec
+INSERT INTO user_token_code_exchange (session_id, expires_at, encrypted_access_token, encrypted_refresh_token, hashed_code)
+VALUES ($1, $2, $3, $4, $5);
