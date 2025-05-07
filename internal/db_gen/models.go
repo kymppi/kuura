@@ -81,7 +81,7 @@ type UserSession struct {
 	ID                  string             `json:"id"`
 	UserID              string             `json:"user_id"`
 	ServiceID           pgtype.UUID        `json:"service_id"`
-	RefreshTokenHash    string             `json:"refresh_token_hash"`
+	RefreshTokenHash    pgtype.Text        `json:"refresh_token_hash"`
 	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	LastAuthenticatedAt pgtype.Timestamptz `json:"last_authenticated_at"`

@@ -56,7 +56,7 @@ type CreateUserSessionParams struct {
 	ID               string             `json:"id"`
 	UserID           string             `json:"user_id"`
 	ServiceID        pgtype.UUID        `json:"service_id"`
-	RefreshTokenHash string             `json:"refresh_token_hash"`
+	RefreshTokenHash pgtype.Text        `json:"refresh_token_hash"`
 	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
 }
 
@@ -221,8 +221,8 @@ WHERE id = $2
 `
 
 type RotateUserSessionRefreshTokenParams struct {
-	RefreshTokenHash string `json:"refresh_token_hash"`
-	ID               string `json:"id"`
+	RefreshTokenHash pgtype.Text `json:"refresh_token_hash"`
+	ID               string      `json:"id"`
 }
 
 func (q *Queries) RotateUserSessionRefreshToken(ctx context.Context, arg RotateUserSessionRefreshTokenParams) error {

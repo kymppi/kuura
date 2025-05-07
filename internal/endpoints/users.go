@@ -449,3 +449,80 @@ func V1_User_ExternalTokens(logger *slog.Logger, userService *users.UserService)
 		})
 	}
 }
+
+type v1UserLoginToService struct {
+	ServiceId string `json:"service_id"`
+}
+
+func (r *v1UserLoginToService) Valid(ctx context.Context) (problems map[string]string) {
+	problems = make(map[string]string)
+
+	if r.ServiceId == "" {
+		problems["service_id"] = "'service_id' cannot be empty"
+	}
+
+	return problems
+}
+
+func V1_User_LoginExternal(logger *slog.Logger, userService *users.UserService, jwkManager *jwks.JWKManager, jwtIssuer string) http.HandlerFunc {
+	type response struct {
+		RedirectURL string `json:"redirect_url"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := decodeValid[*v1UserLoginToService](r)
+		if err != nil {
+			handleErr(w, r, logger, err)
+			return
+		}
+
+		serviceId, err := uuid.Parse(data.ServiceId)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.InvalidServiceId, err))
+			return
+		}
+
+		ctx := r.Context()
+
+		accessCookie, err := r.Cookie(constants.INTERNAL_ACCESS_TOKEN_COOKIE)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_ACCESS_TOKEN_COOKIE)))
+			return
+		}
+		token := accessCookie.Value
+
+		currentSessionServiceId, err := extractServiceIdFromToken(token)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
+			return
+		} else if currentSessionServiceId == nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token without error")))
+			return
+		}
+
+		jwkSet, err := jwkManager.GetJWKS(ctx, *currentSessionServiceId)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to get JWKS: %w", err)))
+			return
+		}
+
+		client, err := parseToken(token, &AuthConfig{
+			JWTIssuer: jwtIssuer,
+			JWKSet:    jwkSet,
+		})
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, err))
+			return
+		}
+
+		redirectUrl, err := userService.LoginToService(ctx, client.Id, serviceId)
+		if err != nil {
+			handleErr(w, r, logger, err)
+			return
+		}
+
+		safeEncode(w, r, logger, http.StatusOK, response{
+			RedirectURL: redirectUrl,
+		})
+	}
+}

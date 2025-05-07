@@ -42,8 +42,11 @@ func (s *UserService) CreateSession(ctx context.Context, uid string, serviceId u
 			Time:  time.Now().Add(time.Hour * 24 * 7),
 			Valid: true,
 		},
-		RefreshTokenHash: hashedToken,
-		ServiceID:        utils.UUIDToPgType(serviceId),
+		RefreshTokenHash: pgtype.Text{
+			String: hashedToken,
+			Valid:  true,
+		},
+		ServiceID: utils.UUIDToPgType(serviceId),
 	}); err != nil {
 		return "", "", err
 	}
@@ -53,6 +56,24 @@ func (s *UserService) CreateSession(ctx context.Context, uid string, serviceId u
 	}
 
 	return id, refreshToken, nil
+}
+
+func (s *UserService) CreateSessionForFutureUse(ctx context.Context, uid string, serviceId uuid.UUID) (id string, err error) {
+	id = ulid.Make().String()
+
+	if err = s.db.CreateUserSession(ctx, db_gen.CreateUserSessionParams{
+		ID:     id,
+		UserID: uid,
+		ExpiresAt: pgtype.Timestamptz{
+			Time:  time.Now().Add(time.Hour * 24 * 7),
+			Valid: true,
+		},
+		ServiceID: utils.UUIDToPgType(serviceId),
+	}); err != nil {
+		return "", err
+	}
+
+	return id, nil
 }
 
 type TokenInfo struct {
@@ -136,8 +157,11 @@ func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, r
 	}
 
 	if err = s.db.RotateUserSessionRefreshToken(ctx, db_gen.RotateUserSessionRefreshTokenParams{
-		RefreshTokenHash: hashedToken,
-		ID:               sessionId,
+		RefreshTokenHash: pgtype.Text{
+			String: hashedToken,
+			Valid:  true,
+		},
+		ID: sessionId,
 	}); err != nil {
 		return nil, fmt.Errorf("failed to rotate refresh token: %w", err)
 	}
@@ -225,8 +249,11 @@ func (s *UserService) CreateAccessTokenUsingCode(ctx context.Context, code strin
 	}
 
 	if err = s.db.RotateUserSessionRefreshToken(ctx, db_gen.RotateUserSessionRefreshTokenParams{
-		RefreshTokenHash: hashedToken,
-		ID:               sessionId,
+		RefreshTokenHash: pgtype.Text{
+			String: hashedToken,
+			Valid:  true,
+		},
+		ID: sessionId,
 	}); err != nil {
 		return nil, fmt.Errorf("failed to rotate refresh token: %w", err)
 	}
@@ -250,12 +277,10 @@ func (s *UserService) GetSession(ctx context.Context, sessionId string) (*models
 	}
 
 	obj := &models.UserSession{
-		Id:                  session.ID,
-		UserId:              session.UserID,
-		RefreshTokenHash:    session.RefreshTokenHash,
-		ExpiresAt:           session.ExpiresAt.Time,
-		CreatedAt:           session.CreatedAt.Time,
-		LastAuthenticatedAt: session.LastAuthenticatedAt.Time,
+		Id:        session.ID,
+		UserId:    session.UserID,
+		ExpiresAt: session.ExpiresAt.Time,
+		CreatedAt: session.CreatedAt.Time,
 	}
 
 	if session.ServiceID.Valid {
@@ -267,11 +292,23 @@ func (s *UserService) GetSession(ctx context.Context, sessionId string) (*models
 		obj.ServiceId = &id
 	}
 
+	if session.LastAuthenticatedAt.Valid {
+		obj.LastAuthenticatedAt = &session.LastAuthenticatedAt.Time
+	}
+
+	if session.RefreshTokenHash.Valid {
+		obj.RefreshTokenHash = &session.RefreshTokenHash.String
+	}
+
 	return obj, nil
 }
 
 func (s *UserService) validateRefreshToken(session *models.UserSession, token string) (bool, error) {
-	valid, err := s.tokenhasher.CompareHashAndValue(session.RefreshTokenHash, token)
+	if session.RefreshTokenHash == nil {
+		return false, nil
+	}
+
+	valid, err := s.tokenhasher.CompareHashAndValue(*session.RefreshTokenHash, token)
 	if err != nil {
 		return false, err
 	}

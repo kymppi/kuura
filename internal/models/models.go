@@ -34,8 +34,8 @@ type UserSession struct {
 	Id                  string
 	UserId              string
 	ServiceId           *uuid.UUID
-	RefreshTokenHash    string
+	RefreshTokenHash    *string
 	ExpiresAt           time.Time
 	CreatedAt           time.Time
-	LastAuthenticatedAt time.Time
+	LastAuthenticatedAt *time.Time
 }

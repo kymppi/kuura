@@ -34,6 +34,7 @@ func addMainRoutes(
 
 	mux.Handle("POST /v1/logout", endpoints.V1_User_Logout(logger, userService, publicKuuraDomain, jwkManager, jwtIssuer))
 	mux.Handle("POST /v1/user/tokens/external", endpoints.V1_User_ExternalTokens(logger, userService))
+	mux.Handle("POST /v1/user/login/external", endpoints.V1_User_LoginExternal(logger, userService, jwkManager, jwtIssuer))
 	mux.Handle(fmt.Sprintf("POST %s", constants.INTERNAL_USER_REFRESH_PATH), endpoints.V1_User_RefreshInternalToken(logger, userService, publicKuuraDomain))
 
 	mux.Handle("GET /v1/me", endpoints.V1_ME(logger, userService, jwkManager, jwtIssuer))
