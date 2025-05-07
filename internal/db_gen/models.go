@@ -96,11 +96,8 @@ type UserSrp struct {
 }
 
 type UserTokenCodeExchange struct {
-	SessionID             string             `json:"session_id"`
-	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
-	EncryptedAccessToken  string             `json:"encrypted_access_token"`
-	EncryptedRefreshToken string             `json:"encrypted_refresh_token"`
-	EncryptionNonce       []byte             `json:"encryption_nonce"`
-	CreatedAt             pgtype.Timestamptz `json:"created_at"`
-	HashedCode            string             `json:"hashed_code"`
+	SessionID  string             `json:"session_id"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	HashedCode string             `json:"hashed_code"`
 }

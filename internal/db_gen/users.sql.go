@@ -184,26 +184,18 @@ func (q *Queries) GetUserSession(ctx context.Context, id string) (UserSession, e
 }
 
 const insertCodeToSessionTokenExchange = `-- name: InsertCodeToSessionTokenExchange :exec
-INSERT INTO user_token_code_exchange (session_id, expires_at, encrypted_access_token, encrypted_refresh_token, hashed_code)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO user_token_code_exchange (session_id, expires_at, hashed_code)
+VALUES ($1, $2, $3)
 `
 
 type InsertCodeToSessionTokenExchangeParams struct {
-	SessionID             string             `json:"session_id"`
-	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
-	EncryptedAccessToken  string             `json:"encrypted_access_token"`
-	EncryptedRefreshToken string             `json:"encrypted_refresh_token"`
-	HashedCode            string             `json:"hashed_code"`
+	SessionID  string             `json:"session_id"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	HashedCode string             `json:"hashed_code"`
 }
 
 func (q *Queries) InsertCodeToSessionTokenExchange(ctx context.Context, arg InsertCodeToSessionTokenExchangeParams) error {
-	_, err := q.db.Exec(ctx, insertCodeToSessionTokenExchange,
-		arg.SessionID,
-		arg.ExpiresAt,
-		arg.EncryptedAccessToken,
-		arg.EncryptedRefreshToken,
-		arg.HashedCode,
-	)
+	_, err := q.db.Exec(ctx, insertCodeToSessionTokenExchange, arg.SessionID, arg.ExpiresAt, arg.HashedCode)
 	return err
 }
 
@@ -269,27 +261,12 @@ WHERE token.hashed_code = $1
   AND token.expires_at > NOW()
   AND token.session_id = session.id
 RETURNING
-    token.session_id,
-    token.encrypted_access_token,
-    token.encrypted_refresh_token,
-    token.encryption_nonce
+    token.session_id
 `
 
-type UseTokenExchangeCodeRow struct {
-	SessionID             string `json:"session_id"`
-	EncryptedAccessToken  string `json:"encrypted_access_token"`
-	EncryptedRefreshToken string `json:"encrypted_refresh_token"`
-	EncryptionNonce       []byte `json:"encryption_nonce"`
-}
-
-func (q *Queries) UseTokenExchangeCode(ctx context.Context, hashedCode string) (UseTokenExchangeCodeRow, error) {
+func (q *Queries) UseTokenExchangeCode(ctx context.Context, hashedCode string) (string, error) {
 	row := q.db.QueryRow(ctx, useTokenExchangeCode, hashedCode)
-	var i UseTokenExchangeCodeRow
-	err := row.Scan(
-		&i.SessionID,
-		&i.EncryptedAccessToken,
-		&i.EncryptedRefreshToken,
-		&i.EncryptionNonce,
-	)
-	return i, err
+	var session_id string
+	err := row.Scan(&session_id)
+	return session_id, err
 }

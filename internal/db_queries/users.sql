@@ -62,8 +62,8 @@ SELECT id, username, last_login_at FROM users
 WHERE id = $1;
 
 -- name: InsertCodeToSessionTokenExchange :exec
-INSERT INTO user_token_code_exchange (session_id, expires_at, encrypted_access_token, encrypted_refresh_token, hashed_code)
-VALUES ($1, $2, $3, $4, $5);
+INSERT INTO user_token_code_exchange (session_id, expires_at, hashed_code)
+VALUES ($1, $2, $3);
 
 -- name: UseTokenExchangeCode :one
 DELETE FROM user_token_code_exchange AS token
@@ -71,10 +71,7 @@ WHERE token.hashed_code = $1
   AND token.expires_at > NOW()
   AND token.session_id = session.id
 RETURNING
-    token.session_id,
-    token.encrypted_access_token,
-    token.encrypted_refresh_token,
-    token.encryption_nonce;
+    token.session_id;
 
 -- name: GetAccessTokenDurationUsingSessionId :one
 SELECT svc.access_token_duration

@@ -9,7 +9,6 @@ import (
 	kuura "github.com/kymppi/kuura/internal"
 	"github.com/kymppi/kuura/internal/services"
 	"github.com/kymppi/kuura/internal/settings"
-	"github.com/kymppi/kuura/internal/users"
 	"github.com/manifoldco/promptui"
 	"github.com/opencoff/go-srp"
 	"github.com/spf13/cobra"
@@ -81,7 +80,10 @@ func usersCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 			_, vh := v.Encode()
 
-			userService := users.NewUserService(logger, queries, config.JWT_ISSUER, jwkManager, serviceManager)
+			userService, err := kuura.InitializeUserService(ctx, logger, config, queries, jwkManager, serviceManager)
+			if err != nil {
+				panic(err)
+			}
 
 			uid, err := userService.Register(ctx, username, vh)
 			if err != nil {

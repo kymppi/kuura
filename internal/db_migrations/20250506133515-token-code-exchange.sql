@@ -3,9 +3,6 @@
 CREATE TABLE user_token_code_exchange(
     session_id TEXT NOT NULL PRIMARY KEY REFERENCES user_sessions(id),
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    encrypted_access_token TEXT NOT NULL,
-    encrypted_refresh_token TEXT NOT NULL,
-    encryption_nonce bytea NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     hashed_code TEXT NOT NULL
 );

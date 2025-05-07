@@ -110,10 +110,10 @@ func V1_Service_UserTokens(logger *slog.Logger, userService *users.UserService) 
 			return
 		}
 
-		var tokenInfo *users.TokenInfoForService
+		var tokenInfo *users.TokenInfo
 
 		if data.Code != "" {
-			info, err := userService.ExchangeCodeForTokens(r.Context(), data.Code)
+			info, err := userService.CreateAccessTokenUsingCode(r.Context(), data.Code)
 			if err != nil {
 				handleErr(w, r, logger, err)
 				return
@@ -121,7 +121,7 @@ func V1_Service_UserTokens(logger *slog.Logger, userService *users.UserService) 
 
 			tokenInfo = info
 		} else {
-			info, err := userService.RefreshServiceAccessToken(r.Context(), data.SessionId, data.RefreshToken)
+			info, err := userService.CreateAccessToken(r.Context(), data.SessionId, data.RefreshToken)
 			if err != nil {
 				handleErr(w, r, logger, err)
 				return
