@@ -5,6 +5,7 @@ go 1.24.2
 require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/lestrrat-go/jwx/v3 v3.0.1
 	github.com/rubenv/sql-migrate v1.8.0
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/otel/trace v1.35.0
