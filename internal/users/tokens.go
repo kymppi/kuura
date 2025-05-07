@@ -56,13 +56,10 @@ func (s *UserService) CreateSession(ctx context.Context, uid string, serviceId u
 }
 
 type TokenInfo struct {
-	AccessToken             string
-	AccessTokenDuration     time.Duration
-	ServiceAccessCookieName string
-
-	SessionId     string
-	RefreshToken  string
-	ServiceDomain string
+	AccessToken         string
+	AccessTokenDuration time.Duration
+	SessionId           string
+	RefreshToken        string
 }
 
 func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, refreshToken string) (*TokenInfo, error) {
@@ -146,12 +143,10 @@ func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, r
 	}
 
 	return &TokenInfo{
-		AccessToken:             accessToken,
-		RefreshToken:            newRefreshToken,
-		ServiceDomain:           service.AccessTokenCookieDomain,
-		ServiceAccessCookieName: service.AccessTokenCookie,
-		AccessTokenDuration:     service.AccessTokenDuration,
-		SessionId:               session.Id,
+		AccessToken:         accessToken,
+		RefreshToken:        newRefreshToken,
+		AccessTokenDuration: service.AccessTokenDuration,
+		SessionId:           session.Id,
 	}, nil
 }
 
@@ -237,12 +232,10 @@ func (s *UserService) CreateAccessTokenUsingCode(ctx context.Context, code strin
 	}
 
 	return &TokenInfo{
-		AccessToken:             accessToken,
-		RefreshToken:            newRefreshToken,
-		ServiceDomain:           service.AccessTokenCookieDomain,
-		ServiceAccessCookieName: service.AccessTokenCookie,
-		AccessTokenDuration:     service.AccessTokenDuration,
-		SessionId:               sessionId,
+		AccessToken:         accessToken,
+		RefreshToken:        newRefreshToken,
+		AccessTokenDuration: service.AccessTokenDuration,
+		SessionId:           sessionId,
 	}, nil
 }
 

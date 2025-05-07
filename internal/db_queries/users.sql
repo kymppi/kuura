@@ -78,3 +78,7 @@ SELECT svc.access_token_duration
 FROM services AS svc
 JOIN user_sessions AS us ON us.service_id = svc.id
 WHERE us.id = $1;
+
+-- name: DeleteUserSession :exec
+DELETE FROM user_sessions
+WHERE id = $1 AND user_id = $2;

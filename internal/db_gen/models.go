@@ -54,12 +54,10 @@ type Service struct {
 	ModifiedAt          time.Time          `json:"modified_at"`
 	Name                string             `json:"name"`
 	Description         pgtype.Text        `json:"description"`
-	ApiDomain           string             `json:"api_domain"`
 	ContactName         string             `json:"contact_name"`
 	ContactEmail        string             `json:"contact_email"`
 	LoginRedirect       string             `json:"login_redirect"`
 	AccessTokenDuration int32              `json:"access_token_duration"`
-	AccessTokenCookie   string             `json:"access_token_cookie"`
 }
 
 type ServiceKeyState struct {

@@ -39,8 +39,11 @@ export default function Home() {
   return (
     <Stack>
       <h1>Welcome, {user?.username}!</h1>
-      <Button onClick={() => client.refreshAccessToken()}>
+      <Button kind="secondary" onClick={() => client.refreshAccessToken()}>
         Refresh tokens
+      </Button>
+      <Button kind="danger" onClick={() => client.logout()}>
+        Log out
       </Button>
     </Stack>
   );

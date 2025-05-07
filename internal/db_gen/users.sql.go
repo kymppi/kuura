@@ -71,6 +71,21 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 	return err
 }
 
+const deleteUserSession = `-- name: DeleteUserSession :exec
+DELETE FROM user_sessions
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteUserSessionParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) error {
+	_, err := q.db.Exec(ctx, deleteUserSession, arg.ID, arg.UserID)
+	return err
+}
+
 const getAccessTokenDurationUsingSessionId = `-- name: GetAccessTokenDurationUsingSessionId :one
 SELECT svc.access_token_duration
 FROM services AS svc

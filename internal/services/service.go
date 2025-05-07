@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/kymppi/kuura/internal/constants"
 	"github.com/kymppi/kuura/internal/db_gen"
 	"github.com/kymppi/kuura/internal/enums/instance_setting"
 	"github.com/kymppi/kuura/internal/errcode"
@@ -26,18 +25,16 @@ func serviceToModel(service db_gen.Service) (*models.AppService, error) {
 	}
 
 	return &models.AppService{
-		Id:                      id,
-		JWTAudience:             service.JwtAudience,
-		CreatedAt:               service.CreatedAt.Time,
-		ModifiedAt:              service.ModifiedAt,
-		Name:                    service.Name,
-		Description:             service.Description.String,
-		ContactName:             service.ContactName,
-		ContactEmail:            service.ContactEmail,
-		LoginRedirect:           service.LoginRedirect,
-		AccessTokenDuration:     time.Duration(service.AccessTokenDuration) * time.Second,
-		AccessTokenCookieDomain: service.ApiDomain,
-		AccessTokenCookie:       service.AccessTokenCookie,
+		Id:                  id,
+		JWTAudience:         service.JwtAudience,
+		CreatedAt:           service.CreatedAt.Time,
+		ModifiedAt:          service.ModifiedAt,
+		Name:                service.Name,
+		Description:         service.Description.String,
+		ContactName:         service.ContactName,
+		ContactEmail:        service.ContactEmail,
+		LoginRedirect:       service.LoginRedirect,
+		AccessTokenDuration: time.Duration(service.AccessTokenDuration) * time.Second,
 	}, nil
 }
 
@@ -45,7 +42,6 @@ func (m *ServiceManager) CreateService(
 	ctx context.Context,
 	name string,
 	jwtAudience string,
-	apiDomain string,
 	loginRedirect string,
 ) (*uuid.UUID, error) {
 	id, err := uuid.NewV7()
@@ -57,7 +53,6 @@ func (m *ServiceManager) CreateService(
 		ID:            utils.UUIDToPgType(id),
 		JwtAudience:   jwtAudience,
 		Name:          name,
-		ApiDomain:     apiDomain,
 		LoginRedirect: loginRedirect,
 	})
 
@@ -125,7 +120,6 @@ func (m *ServiceManager) UpdateService(ctx context.Context, service *models.AppS
 			Valid:  service.Description != "",
 		},
 		AccessTokenDuration: int32(service.AccessTokenDuration.Seconds()),
-		AccessTokenCookie:   service.AccessTokenCookie,
 		LoginRedirect:       service.LoginRedirect,
 		ContactName:         service.ContactName,
 		ContactEmail:        service.ContactEmail,
@@ -154,7 +148,7 @@ func (m *ServiceManager) CreateInternalServiceIfNotExists(ctx context.Context, p
 		}
 	}
 
-	newServiceUUID, err := m.CreateService(ctx, "Kuura", KUURA_AUDIENCE, publicKuuraDomain, fmt.Sprintf("https://%s/home", publicKuuraDomain))
+	newServiceUUID, err := m.CreateService(ctx, "Kuura", KUURA_AUDIENCE, fmt.Sprintf("https://%s/home", publicKuuraDomain))
 	if err != nil {
 		return err
 	}
@@ -182,12 +176,6 @@ func (m *ServiceManager) VerifyServiceSettingsOrUpdate(ctx context.Context, exis
 
 	if service.Name != "Kuura" {
 		updatedService.Name = "Kuura"
-		needsUpdate = true
-	}
-
-	expectedCookie := constants.INTERNAL_ACCESS_TOKEN_COOKIE
-	if service.AccessTokenCookie != expectedCookie {
-		updatedService.AccessTokenCookie = expectedCookie
 		needsUpdate = true
 	}
 

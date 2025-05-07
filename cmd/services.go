@@ -38,7 +38,6 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 	var (
 		name          string
 		audience      string
-		apiDomain     string
 		loginRedirect string
 	)
 
@@ -58,7 +57,7 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 			settingsService := settings.NewSettingsService(logger, queries)
 			serviceManager := services.NewServiceManager(logger, queries, settingsService)
 
-			id, err := serviceManager.CreateService(ctx, name, audience, apiDomain, loginRedirect)
+			id, err := serviceManager.CreateService(ctx, name, audience, loginRedirect)
 			if err != nil {
 				logger.Error("Failed to create service", slog.String("error", err.Error()))
 				return
@@ -72,12 +71,10 @@ func serviceCreate(logger *slog.Logger, config *kuura.Config) *cobra.Command {
 
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Name of the service")
 	cmd.Flags().StringVarP(&audience, "audience", "a", "", "JWT audience for the service")
-	cmd.Flags().StringVarP(&apiDomain, "apiDomain", "d", "", "The domain which should be used in the access_token cookie")
 	cmd.Flags().StringVarP(&loginRedirect, "loginRedirect", "r", "", "The full url of the page where user should be redirect to.")
 
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("audience")
-	cmd.MarkFlagRequired("apiDomain")
 	cmd.MarkFlagRequired("loginRedirect")
 
 	return cmd

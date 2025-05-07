@@ -308,6 +308,19 @@ export class SRPAuthClient {
     }
   }
 
+  public async logout(): Promise<boolean> {
+    try {
+      const response = await this.axiosInstance.post<{ success: boolean }>(
+        '/v1/logout'
+      );
+
+      return response.data.success;
+    } catch (error) {
+      console.error('Failed to logout:', error);
+      return false;
+    }
+  }
+
   private isClientSupported(): boolean {
     return (
       typeof window !== 'undefined' &&
