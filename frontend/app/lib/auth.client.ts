@@ -347,6 +347,22 @@ export class SRPAuthClient {
     }
   }
 
+  public async loginToService(serviceId: string): Promise<string> {
+    try {
+      const response = await this.axiosInstance.post<{ redirect_url: string }>(
+        '/v1/user/login/external',
+        {
+          service_id: serviceId,
+        }
+      );
+
+      return response.data.redirect_url;
+    } catch (error) {
+      console.error('Failed to login to service:', error);
+      return '';
+    }
+  }
+
   private isClientSupported(): boolean {
     return (
       typeof window !== 'undefined' &&
