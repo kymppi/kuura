@@ -119,7 +119,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 				return
 			}
 
-			setAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
+			setInternalAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
 
 			data := response{
 				Success: true,
@@ -131,19 +131,18 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 	)
 }
 
-func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserService, publicKuuraDomain string) http.HandlerFunc {
+func V1_User_RefreshInternalToken(logger *slog.Logger, userService *users.UserService, publicKuuraDomain string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// read session_id, refresh_token cookies
-		sessionCookie, err := r.Cookie(constants.SESSION_COOKIE)
+		sessionCookie, err := r.Cookie(constants.INTERNAL_SESSION_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.SESSION_COOKIE)).WithMetadata("cookie", constants.SESSION_COOKIE))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_SESSION_COOKIE)).WithMetadata("cookie", constants.INTERNAL_SESSION_COOKIE))
 			return
 		}
 		sessionId := sessionCookie.Value
 
-		refreshCookie, err := r.Cookie(constants.REFRESH_TOKEN_COOKIE)
+		refreshCookie, err := r.Cookie(constants.INTERNAL_REFRESH_TOKEN_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", constants.REFRESH_TOKEN_COOKIE))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", constants.INTERNAL_REFRESH_TOKEN_COOKIE))
 			return
 		}
 		initialRefreshToken := refreshCookie.Value
@@ -154,7 +153,7 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 			return
 		}
 
-		setAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
+		setInternalAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
 
 		safeEncode(w, r, logger, http.StatusOK, map[string]any{
 			"success": true,
@@ -173,9 +172,9 @@ func V1_ME(logger *slog.Logger, users *users.UserService, jwkManager *jwks.JWKMa
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			accessCookie, err := r.Cookie(constants.KUURA_ACCESS_TOKEN_COOKIE)
+			accessCookie, err := r.Cookie(constants.INTERNAL_ACCESS_TOKEN_COOKIE)
 			if err != nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.KUURA_ACCESS_TOKEN_COOKIE)))
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_ACCESS_TOKEN_COOKIE)))
 				return
 			}
 			token := accessCookie.Value
@@ -248,10 +247,10 @@ func extractServiceIdFromToken(tokenString string) (*uuid.UUID, error) {
 	return &parsedUUID, nil
 }
 
-func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.TokenInfo, publicKuuraDomain string) {
+func setInternalAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.TokenInfo, publicKuuraDomain string) {
 	// refresh token
 	http.SetCookie(w, &http.Cookie{
-		Name:     constants.REFRESH_TOKEN_COOKIE,
+		Name:     constants.INTERNAL_REFRESH_TOKEN_COOKIE,
 		Value:    tokenInfo.RefreshToken,
 		Path:     "/v1/user/access",
 		MaxAge:   60 * 60 * 24 * 7, // week in seconds
@@ -263,7 +262,7 @@ func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.To
 
 	// session
 	http.SetCookie(w, &http.Cookie{
-		Name:     constants.SESSION_COOKIE,
+		Name:     constants.INTERNAL_SESSION_COOKIE,
 		Value:    sessionId,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24 * 30, // month in seconds
@@ -282,7 +281,7 @@ func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.To
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
-		Domain:   tokenInfo.ServiceDomain,
+		Domain:   publicKuuraDomain,
 	})
 }
 
@@ -315,7 +314,7 @@ func (r *v1ServiceUserTokens) Valid(ctx context.Context) (problems map[string]st
 	return problems
 }
 
-func V1_Service_UserTokens(logger *slog.Logger, userService *users.UserService) http.HandlerFunc {
+func V1_User_ExternalTokens(logger *slog.Logger, userService *users.UserService) http.HandlerFunc {
 	type response struct {
 		AccessToken         string `json:"access_token"`
 		RefreshToken        string `json:"refresh_token"`

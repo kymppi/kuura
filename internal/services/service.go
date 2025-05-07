@@ -185,7 +185,7 @@ func (m *ServiceManager) VerifyServiceSettingsOrUpdate(ctx context.Context, exis
 		needsUpdate = true
 	}
 
-	expectedCookie := constants.KUURA_ACCESS_TOKEN_COOKIE
+	expectedCookie := constants.INTERNAL_ACCESS_TOKEN_COOKIE
 	if service.AccessTokenCookie != expectedCookie {
 		updatedService.AccessTokenCookie = expectedCookie
 		needsUpdate = true

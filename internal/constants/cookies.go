@@ -1,5 +1,5 @@
 package constants
 
-const REFRESH_TOKEN_COOKIE = "kuura_refresh"
-const SESSION_COOKIE = "kuura_session"
-const KUURA_ACCESS_TOKEN_COOKIE = "kuura_access"
+const INTERNAL_REFRESH_TOKEN_COOKIE = "kuura_refresh"
+const INTERNAL_SESSION_COOKIE = "kuura_session"
+const INTERNAL_ACCESS_TOKEN_COOKIE = "kuura_access"

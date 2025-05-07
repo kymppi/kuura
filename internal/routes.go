@@ -30,8 +30,8 @@ func addMainRoutes(
 
 	mux.Handle("POST /v1/m2m/access", endpoints.V1M2MRefreshAccessToken(logger, m2mService))
 
-	mux.Handle("POST /v1/user/tokens/external", endpoints.V1_Service_UserTokens(logger, userService))
-	mux.Handle("POST /v1/user/tokens/internal", endpoints.V1_User_RefreshAccessToken(logger, userService, publicKuuraDomain))
+	mux.Handle("POST /v1/user/tokens/external", endpoints.V1_User_ExternalTokens(logger, userService))
+	mux.Handle("POST /v1/user/tokens/internal", endpoints.V1_User_RefreshInternalToken(logger, userService, publicKuuraDomain))
 
 	mux.Handle("GET /v1/me", endpoints.V1_ME(logger, userService, jwkManager, jwtIssuer))
 
