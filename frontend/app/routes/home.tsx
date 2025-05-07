@@ -1,3 +1,7 @@
+import { Button, Loading, Stack } from '@carbon/react';
+import { useNavigate } from 'react-router';
+import { useAuthentication } from '../hooks/useAuthentication';
+
 export function meta() {
   return [
     { title: 'Kuura' },
@@ -9,5 +13,35 @@ export function meta() {
 }
 
 export default function Home() {
-  return <h1>Welcome!</h1>;
+  const navigate = useNavigate();
+  const { loading, authenticated, user, client } = useAuthentication();
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: 'grid',
+          width: '100%',
+          height: '100%',
+          placeItems: 'center',
+        }}
+      >
+        <Loading />
+      </div>
+    );
+  }
+
+  if (!user || !authenticated) {
+    navigate('/login');
+    return <h1>Unauthorized (or no user found).</h1>;
+  }
+
+  return (
+    <Stack>
+      <h1>Welcome, {user?.username}!</h1>
+      <Button onClick={() => client.refreshAccessToken()}>
+        Refresh tokens
+      </Button>
+    </Stack>
+  );
 }

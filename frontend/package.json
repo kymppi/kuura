@@ -13,6 +13,7 @@
     "@carbon/react": "^1.81.0",
     "@react-router/node": "^7.5.3",
     "@react-router/serve": "^7.5.3",
+    "axios": "^1.9.0",
     "bigint-toolkit": "^0.2.0",
     "isbot": "^5.1.27",
     "react": "^19.1.0",
@@ -44,5 +45,6 @@
       "@carbon/type",
       "@parcel/watcher"
     ]
-  }
+  },
+  "packageManager": "pnpm@10.10.0+sha256.fa0f513aa8191764d2b6b432420788c270f07b4f999099b65bb2010eec702a30"
 }

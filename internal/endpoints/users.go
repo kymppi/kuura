@@ -252,7 +252,7 @@ func setInternalAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *
 	http.SetCookie(w, &http.Cookie{
 		Name:     constants.INTERNAL_REFRESH_TOKEN_COOKIE,
 		Value:    tokenInfo.RefreshToken,
-		Path:     "/v1/user/access",
+		Path:     constants.INTERNAL_USER_REFRESH_PATH,
 		MaxAge:   60 * 60 * 24 * 7, // week in seconds
 		HttpOnly: true,
 		Secure:   true,

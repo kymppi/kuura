@@ -9,6 +9,9 @@ import {
 
 import type { Route } from './+types/root';
 import './app.scss';
+import { AuthProvider } from './contexts/AuthProvider';
+import { SRPAuthClient } from './lib/auth.client';
+import { DefaultPrimeField } from './lib/srp.client';
 
 export const links: Route.LinksFunction = () => [];
 
@@ -31,7 +34,13 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const client = new SRPAuthClient('', DefaultPrimeField);
+
+  return (
+    <AuthProvider client={client}>
+      <Outlet />
+    </AuthProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

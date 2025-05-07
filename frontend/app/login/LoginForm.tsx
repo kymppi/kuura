@@ -1,11 +1,8 @@
 import { Button, PasswordInput, Stack, TextInput } from '@carbon/react';
 import { useState } from 'react';
 import { Form } from 'react-router';
-import { SRPAuthClient } from '../lib/auth.client';
+import { useAuthentication } from '../hooks/useAuthentication';
 import type { ServiceInfo } from '../lib/service.client';
-import { DefaultPrimeField } from '../lib/srp.client';
-
-const client = new SRPAuthClient('', DefaultPrimeField);
 
 export default function LoginForm({
   info,
@@ -14,6 +11,7 @@ export default function LoginForm({
   readonly info: ServiceInfo;
   readonly returnTo: string;
 }) {
+  const { client } = useAuthentication();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [inlineError, setInlineError] = useState<string | null>(null);

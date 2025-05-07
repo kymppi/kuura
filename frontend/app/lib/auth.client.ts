@@ -1,3 +1,9 @@
+import axios, {
+  AxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from 'axios';
+import type { User } from '../contexts/AuthProvider';
 import {
   SRPClient,
   type PrimeField,
@@ -9,7 +15,8 @@ export type LoginError =
   | 'SERVER_ERROR'
   | 'NETWORK_ERROR'
   | 'SUSPICIOUS_SERVER'
-  | 'CLIENT_UNSUPPORTED';
+  | 'CLIENT_UNSUPPORTED'
+  | 'TOKEN_REFRESH_FAILED';
 
 interface AuthenticationResponse {
   data: string;
@@ -20,14 +27,82 @@ interface VerificationResponse {
   data: string;
 }
 
+interface TokenRefreshResponse {
+  success: boolean;
+}
+
 export class SRPAuthClient {
-  private readonly baseUrl: string;
   private readonly srpClient: SRPClient;
+  private readonly axiosInstance: AxiosInstance;
   private currentClient?: SRPClientInstance;
+  private isRefreshing: boolean = false;
+  private refreshSubscribers: Array<(status: string) => void> = [];
 
   constructor(baseUrl: string, primeField: PrimeField) {
-    this.baseUrl = baseUrl;
     this.srpClient = new SRPClient(primeField);
+
+    this.axiosInstance = axios.create({
+      baseURL: baseUrl,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError) => {
+        const originalRequest = error.config;
+
+        if (
+          !originalRequest ||
+          error.response?.status !== 401 ||
+          (originalRequest as any)._retry
+        ) {
+          return Promise.reject(error);
+        }
+
+        if (this.isRefreshing) {
+          try {
+            await new Promise<string>((resolve, reject) => {
+              this.refreshSubscribers.push((status: string) => {
+                if (status === 'refreshed') {
+                  resolve(status);
+                } else {
+                  reject('Token refresh failed');
+                }
+              });
+            });
+
+            (originalRequest as any)._retry = true;
+            return this.axiosInstance(originalRequest);
+          } catch (refreshError) {
+            return Promise.reject(refreshError);
+          }
+        } else {
+          (originalRequest as any)._retry = true;
+          this.isRefreshing = true;
+          this.refreshSubscribers = [];
+
+          try {
+            const refreshSuccess = await this.refreshAccessToken();
+
+            if (refreshSuccess) {
+              this.refreshSubscribers.forEach((callback) =>
+                callback('refreshed')
+              );
+
+              return this.axiosInstance(originalRequest);
+            }
+
+            return Promise.reject(new Error('TOKEN_REFRESH_FAILED'));
+          } catch (refreshError) {
+            return Promise.reject(refreshError);
+          } finally {
+            this.isRefreshing = false;
+          }
+        }
+      }
+    );
   }
 
   public async login(
@@ -137,35 +212,42 @@ export class SRPAuthClient {
   private async request<T>(
     endpoint: string,
     method: 'GET' | 'POST',
-    body?: any,
-    headers: Record<string, string> = {}
+    data?: any,
+    config: AxiosRequestConfig = {}
   ): Promise<T> {
     try {
-      const url = `${this.baseUrl}${endpoint}`;
-      const response = await fetch(url, {
+      const axiosConfig = { ...config };
+
+      if (method === 'GET') {
+        axiosConfig.params = data;
+      }
+
+      const response = await this.axiosInstance.request<T>({
+        url: endpoint,
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers,
-        },
-        body: body ? JSON.stringify(body) : undefined,
+        data: method === 'POST' ? data : undefined,
+        ...axiosConfig,
       });
 
-      if (!response.ok) {
-        if (response.status == 401) {
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (
+          error.code === 'ECONNABORTED' ||
+          error.message.includes('Network Error')
+        ) {
+          throw new Error('NETWORK_ERROR');
+        }
+
+        if (error.response?.status === 401) {
           throw new Error('Invalid credentials');
         }
 
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(
+          `HTTP error! status: ${error.response?.status || 'unknown'}`
+        );
       }
 
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Failed to fetch')) {
-          throw new Error('NETWORK_ERROR');
-        }
-      }
       throw error;
     }
   }
@@ -182,9 +264,43 @@ export class SRPAuthClient {
       if (error.message.includes('Invalid credentials')) {
         return { success: false, error: 'INVALID_CREDENTIALS' };
       }
+      if (error.message === 'TOKEN_REFRESH_FAILED') {
+        return { success: false, error: 'TOKEN_REFRESH_FAILED' };
+      }
     }
 
     return { success: false, error: 'SERVER_ERROR' };
+  }
+
+  public async refreshAccessToken(): Promise<boolean> {
+    try {
+      const response = await this.axiosInstance.post<TokenRefreshResponse>(
+        '/v1/user/tokens/internal'
+      );
+
+      return response.data.success;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
+  }
+
+  public async getUser(): Promise<User | null> {
+    try {
+      const response = await this.axiosInstance.get<{
+        id: string;
+        username: string;
+        last_login_at: string;
+      }>('/v1/me');
+
+      return {
+        ...response.data,
+        last_login_at: new Date(response.data.last_login_at),
+      };
+    } catch (error) {
+      console.error('Failed to get authenticated user:', error);
+      return null;
+    }
   }
 
   private isClientSupported(): boolean {
