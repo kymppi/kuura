@@ -16,7 +16,8 @@ export type LoginError =
   | 'NETWORK_ERROR'
   | 'SUSPICIOUS_SERVER'
   | 'CLIENT_UNSUPPORTED'
-  | 'TOKEN_REFRESH_FAILED';
+  | 'TOKEN_REFRESH_FAILED'
+  | 'TOKEN_REFRESH_COOLDOWN';
 
 interface AuthenticationResponse {
   data: string;
@@ -37,6 +38,8 @@ export class SRPAuthClient {
   private currentClient?: SRPClientInstance;
   private isRefreshing: boolean = false;
   private refreshSubscribers: Array<(status: string) => void> = [];
+  private lastRefreshTime: number = 0;
+  private readonly REFRESH_COOLDOWN = 5000;
 
   constructor(baseUrl: string, primeField: PrimeField) {
     this.srpClient = new SRPClient(primeField);
@@ -55,7 +58,8 @@ export class SRPAuthClient {
 
         const skipRefresh =
           originalRequest?.url?.includes('/v1/srp/') ||
-          originalRequest?.url?.includes('/v1/logout');
+          originalRequest?.url?.includes('/v1/logout') ||
+          originalRequest?.url?.includes('/v1/user/tokens/internal');
 
         if (
           !originalRequest ||
@@ -64,6 +68,11 @@ export class SRPAuthClient {
           skipRefresh
         ) {
           return Promise.reject(error);
+        }
+
+        const now = Date.now();
+        if (now - this.lastRefreshTime < this.REFRESH_COOLDOWN) {
+          return Promise.reject(new Error('TOKEN_REFRESH_COOLDOWN'));
         }
 
         if (this.isRefreshing) {
@@ -271,6 +280,9 @@ export class SRPAuthClient {
       }
       if (error.message === 'TOKEN_REFRESH_FAILED') {
         return { success: false, error: 'TOKEN_REFRESH_FAILED' };
+      }
+      if (error.message === 'TOKEN_REFRESH_COOLDOWN') {
+        return { success: false, error: 'TOKEN_REFRESH_COOLDOWN' };
       }
     }
 

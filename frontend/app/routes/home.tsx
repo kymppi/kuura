@@ -14,7 +14,8 @@ export function meta() {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { loading, authenticated, user, client } = useAuthentication();
+  const { loading, authenticated, user, client, refreshUser } =
+    useAuthentication();
 
   if (loading) {
     return (
@@ -42,7 +43,13 @@ export default function Home() {
       <Button kind="secondary" onClick={() => client.refreshAccessToken()}>
         Refresh tokens
       </Button>
-      <Button kind="danger" onClick={() => client.logout()}>
+      <Button
+        kind="danger"
+        onClick={() => {
+          client.logout();
+          navigate('/login');
+        }}
+      >
         Log out
       </Button>
     </Stack>
