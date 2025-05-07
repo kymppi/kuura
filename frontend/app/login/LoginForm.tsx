@@ -11,8 +11,8 @@ export default function LoginForm({
   info,
   returnTo,
 }: {
-  info: ServiceInfo;
-  returnTo: string;
+  readonly info: ServiceInfo;
+  readonly returnTo: string;
 }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

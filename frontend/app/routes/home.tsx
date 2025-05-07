@@ -1,9 +1,10 @@
-import type { Route } from './+types/home';
-
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: 'Kuura' },
-    { name: 'description', content: 'A simpleish user and authentication provider.' },
+    {
+      name: 'description',
+      content: 'A simpleish user and authentication provider.',
+    },
   ];
 }
 

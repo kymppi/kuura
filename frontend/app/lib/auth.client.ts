@@ -21,8 +21,8 @@ interface VerificationResponse {
 }
 
 export class SRPAuthClient {
-  private baseUrl: string;
-  private srpClient: SRPClient;
+  private readonly baseUrl: string;
+  private readonly srpClient: SRPClient;
   private currentClient?: SRPClientInstance;
 
   constructor(baseUrl: string, primeField: PrimeField) {
@@ -94,7 +94,7 @@ export class SRPAuthClient {
         }
       );
 
-      if (!response || !response.data) {
+      if (!response?.data) {
         throw new Error('Invalid server response');
       }
 

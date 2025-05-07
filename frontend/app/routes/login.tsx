@@ -3,9 +3,8 @@ import { useLocation } from 'react-router';
 import LoginLayout from '../layouts/LoginLayout';
 import { getServiceInfo, type ServiceInfo } from '../lib/service.client';
 import LoginForm from '../login/LoginForm';
-import type { Route } from './+types/home';
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: 'Kuura' },
     {
@@ -39,7 +38,7 @@ export default function Login() {
 
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const returnTo = searchParams.get('return_to') || '/home';
+  const returnTo = searchParams.get('return_to') ?? '/home';
 
   return (
     <LoginLayout>
