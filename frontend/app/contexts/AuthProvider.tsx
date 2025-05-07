@@ -1,4 +1,4 @@
-import { createContext, useEffect, useRef, useState } from 'react';
+import { createContext, useEffect, useMemo, useRef, useState } from 'react';
 import { SRPAuthClient } from '../lib/auth.client';
 
 export interface User {
@@ -75,9 +75,17 @@ export const AuthProvider = ({
 
   const authenticated = !!user;
 
+  const value = useMemo(() => ({
+    user,
+    client,
+    authenticated,
+    loading,
+    refreshUser,
+  }), [user, client, authenticated, loading, refreshUser]);
+
   return (
     <AuthContext.Provider
-      value={{ user, client, authenticated, loading, refreshUser }}
+      value={value}
     >
       {children}
     </AuthContext.Provider>

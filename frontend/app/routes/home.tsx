@@ -14,8 +14,7 @@ export function meta() {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { loading, authenticated, user, client, refreshUser } =
-    useAuthentication();
+  const { loading, authenticated, user, client } = useAuthentication();
 
   if (loading) {
     return (

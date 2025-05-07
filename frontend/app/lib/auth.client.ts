@@ -32,6 +32,8 @@ interface TokenRefreshResponse {
   success: boolean;
 }
 
+const SKIP_REFRESH_URLS = ['/v1/srp', '/v1/logout', '/v1/user/tokens/internal'];
+
 export class SRPAuthClient {
   private readonly srpClient: SRPClient;
   private readonly axiosInstance: AxiosInstance;
@@ -56,10 +58,9 @@ export class SRPAuthClient {
       async (error: AxiosError) => {
         const originalRequest = error.config;
 
-        const skipRefresh =
-          originalRequest?.url?.includes('/v1/srp/') ||
-          originalRequest?.url?.includes('/v1/logout') ||
-          originalRequest?.url?.includes('/v1/user/tokens/internal');
+        const skipRefresh = SKIP_REFRESH_URLS.some((url) =>
+          originalRequest?.url?.includes(url)
+        );
 
         if (
           !originalRequest ||
@@ -70,8 +71,7 @@ export class SRPAuthClient {
           return Promise.reject(error);
         }
 
-        const now = Date.now();
-        if (now - this.lastRefreshTime < this.REFRESH_COOLDOWN) {
+        if (this.isInCooldownPeriod()) {
           return Promise.reject(new Error('TOKEN_REFRESH_COOLDOWN'));
         }
 
@@ -108,8 +108,10 @@ export class SRPAuthClient {
               return this.axiosInstance(originalRequest);
             }
 
+            this.notifyRefreshFailed();
             return Promise.reject(new Error('TOKEN_REFRESH_FAILED'));
           } catch (refreshError) {
+            this.notifyRefreshFailed();
             return Promise.reject(refreshError);
           } finally {
             this.isRefreshing = false;
@@ -117,6 +119,16 @@ export class SRPAuthClient {
         }
       }
     );
+  }
+
+  private isInCooldownPeriod(): boolean {
+    const now = Date.now();
+    return now - this.lastRefreshTime < this.REFRESH_COOLDOWN;
+  }
+
+  private notifyRefreshFailed(): void {
+    this.refreshSubscribers.forEach((callback) => callback('failed'));
+    this.refreshSubscribers = [];
   }
 
   public async login(
@@ -258,7 +270,7 @@ export class SRPAuthClient {
         }
 
         throw new Error(
-          `HTTP error! status: ${error.response?.status || 'unknown'}`
+          `HTTP error! status: ${error.response?.status ?? 'unknown'}`
         );
       }
 
@@ -291,6 +303,8 @@ export class SRPAuthClient {
 
   public async refreshAccessToken(): Promise<boolean> {
     try {
+      this.lastRefreshTime = Date.now();
+
       const response = await this.axiosInstance.post<TokenRefreshResponse>(
         '/v1/user/tokens/internal'
       );
