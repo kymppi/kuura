@@ -53,10 +53,15 @@ export class SRPAuthClient {
       async (error: AxiosError) => {
         const originalRequest = error.config;
 
+        const skipRefresh =
+          originalRequest?.url?.includes('/v1/srp/') ||
+          originalRequest?.url?.includes('/v1/logout');
+
         if (
           !originalRequest ||
           error.response?.status !== 401 ||
-          (originalRequest as any)._retry
+          (originalRequest as any)._retry ||
+          skipRefresh
         ) {
           return Promise.reject(error);
         }
