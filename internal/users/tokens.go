@@ -83,6 +83,75 @@ type TokenInfo struct {
 	RefreshToken        string
 }
 
+func (s *UserService) buildAndSignAccessToken(
+	ctx context.Context,
+	session *models.UserSession,
+	roles []string,
+) (*TokenInfo, error) {
+	service, err := s.services.GetService(ctx, *session.ServiceId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get service: %w", err)
+	}
+
+	if err := s.db.UpdateUserSessionLastAuthenticatedAt(ctx, session.Id); err != nil {
+		return nil, fmt.Errorf("failed to update session last authentication date: %w", err)
+	}
+
+	exp := time.Now().Add(service.AccessTokenDuration)
+
+	token, err := jwt.NewBuilder().
+		Audience([]string{service.JWTAudience}).
+		Issuer(s.jwtIssuer).
+		Subject(session.UserId).
+		IssuedAt(time.Now()).
+		Expiration(exp).
+		Claim("session_id", session.Id).
+		Claim("roles", roles).
+		Claim("client_type", "user").
+		Claim("service_id", session.ServiceId.String()).
+		Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build jwt: %w", err)
+	}
+
+	signingKey, err := s.jwkManager.GetSigningKey(ctx, *session.ServiceId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get signing key: %w", err)
+	}
+
+	signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.ES384, signingKey))
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign jwt: %w", err)
+	}
+
+	newRefreshToken, err := generateOpaqueToken(32)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	hashedToken, err := s.tokenhasher.HashValue(newRefreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash refresh token: %w", err)
+	}
+
+	if err := s.db.RotateUserSessionRefreshToken(ctx, db_gen.RotateUserSessionRefreshTokenParams{
+		RefreshTokenHash: pgtype.Text{
+			String: hashedToken,
+			Valid:  true,
+		},
+		ID: session.Id,
+	}); err != nil {
+		return nil, fmt.Errorf("failed to rotate refresh token: %w", err)
+	}
+
+	return &TokenInfo{
+		AccessToken:         string(signedToken),
+		RefreshToken:        newRefreshToken,
+		AccessTokenDuration: service.AccessTokenDuration,
+		SessionId:           session.Id,
+	}, nil
+}
+
 func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, refreshToken string) (*TokenInfo, error) {
 	session, err := s.GetSession(ctx, sessionId)
 	if err != nil {
@@ -105,73 +174,11 @@ func (s *UserService) CreateAccessToken(ctx context.Context, sessionId string, r
 		return nil, errors.New("invalid refresh token")
 	}
 
-	service, err := s.services.GetService(ctx, *session.ServiceId)
+	tokenInfo, err := s.buildAndSignAccessToken(ctx, session, roles)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get service: %w", err)
+		return nil, err
 	}
-
-	err = s.db.UpdateUserSessionLastAuthenticatedAt(ctx, sessionId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update session last authentication date: %w", err)
-	}
-
-	// important that we try to generate the jwt BEFORE updating refresh token, if it fails then the client can't even retry
-	exp := time.Now().Add(service.AccessTokenDuration)
-
-	token, err := jwt.NewBuilder().
-		Audience([]string{service.JWTAudience}).
-		Issuer(s.jwtIssuer).
-		Subject(session.UserId).
-		IssuedAt(time.Now()).
-		Expiration(exp).
-		Claim("session_id", sessionId).
-		Claim("roles", roles).
-		Claim("client_type", "user").
-		Claim("service_id", session.ServiceId.String()).
-		Build()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to build jwt: %w", err)
-	}
-
-	signingKey, err := s.jwkManager.GetSigningKey(ctx, *session.ServiceId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get signing key: %w", err)
-	}
-
-	signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.ES384, signingKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign jwt: %w", err)
-	}
-
-	accessToken := string(signedToken)
-
-	newRefreshToken, err := generateOpaqueToken(32)
-	if err != nil {
-		return nil, fmt.Errorf("failed to rotate refresh token: generate opaque token: %w", err)
-	}
-
-	hashedToken, err := s.tokenhasher.HashValue(newRefreshToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash new refresh token: %w", err)
-	}
-
-	if err = s.db.RotateUserSessionRefreshToken(ctx, db_gen.RotateUserSessionRefreshTokenParams{
-		RefreshTokenHash: pgtype.Text{
-			String: hashedToken,
-			Valid:  true,
-		},
-		ID: sessionId,
-	}); err != nil {
-		return nil, fmt.Errorf("failed to rotate refresh token: %w", err)
-	}
-
-	return &TokenInfo{
-		AccessToken:         accessToken,
-		RefreshToken:        newRefreshToken,
-		AccessTokenDuration: service.AccessTokenDuration,
-		SessionId:           session.Id,
-	}, nil
+	return tokenInfo, nil
 }
 
 func hashCodeHMAC(code string, secret []byte) string {
@@ -198,72 +205,11 @@ func (s *UserService) CreateAccessTokenUsingCode(ctx context.Context, code strin
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 
-	service, err := s.services.GetService(ctx, *session.ServiceId)
+	tokenInfo, err := s.buildAndSignAccessToken(ctx, session, roles)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get service: %w", err)
+		return nil, err
 	}
-
-	err = s.db.UpdateUserSessionLastAuthenticatedAt(ctx, sessionId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update session last authentication date: %w", err)
-	}
-
-	exp := time.Now().Add(service.AccessTokenDuration)
-
-	token, err := jwt.NewBuilder().
-		Audience([]string{service.JWTAudience}).
-		Issuer(s.jwtIssuer).
-		Subject(session.UserId).
-		IssuedAt(time.Now()).
-		Expiration(exp).
-		Claim("session_id", sessionId).
-		Claim("roles", roles).
-		Claim("client_type", "user").
-		Claim("service_id", session.ServiceId.String()).
-		Build()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to build jwt: %w", err)
-	}
-
-	signingKey, err := s.jwkManager.GetSigningKey(ctx, *session.ServiceId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get signing key: %w", err)
-	}
-
-	signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.ES384, signingKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign jwt: %w", err)
-	}
-
-	accessToken := string(signedToken)
-
-	newRefreshToken, err := generateOpaqueToken(32)
-	if err != nil {
-		return nil, fmt.Errorf("failed to rotate refresh token: generate opaque token: %w", err)
-	}
-
-	hashedToken, err := s.tokenhasher.HashValue(newRefreshToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash new refresh token: %w", err)
-	}
-
-	if err = s.db.RotateUserSessionRefreshToken(ctx, db_gen.RotateUserSessionRefreshTokenParams{
-		RefreshTokenHash: pgtype.Text{
-			String: hashedToken,
-			Valid:  true,
-		},
-		ID: sessionId,
-	}); err != nil {
-		return nil, fmt.Errorf("failed to rotate refresh token: %w", err)
-	}
-
-	return &TokenInfo{
-		AccessToken:         accessToken,
-		RefreshToken:        newRefreshToken,
-		AccessTokenDuration: service.AccessTokenDuration,
-		SessionId:           sessionId,
-	}, nil
+	return tokenInfo, nil
 }
 
 func (s *UserService) GetSession(ctx context.Context, sessionId string) (*models.UserSession, error) {
