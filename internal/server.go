@@ -10,7 +10,6 @@ import (
 	"github.com/kymppi/kuura/internal/m2m"
 	"github.com/kymppi/kuura/internal/services"
 	"github.com/kymppi/kuura/internal/settings"
-	"github.com/kymppi/kuura/internal/users"
 )
 
 func RunServer(ctx context.Context, logger *slog.Logger, config *Config, frontendFS embed.FS) error {
@@ -33,7 +32,11 @@ func RunServer(ctx context.Context, logger *slog.Logger, config *Config, fronten
 	}
 
 	m2mService := m2m.NewM2MService(queries, config.JWT_ISSUER, jwkManager)
-	userService := users.NewUserService(logger, queries, config.JWT_ISSUER, jwkManager, serviceManager)
+
+	userService, err := InitializeUserService(ctx, logger, config, queries, jwkManager, serviceManager)
+	if err != nil {
+		return err
+	}
 
 	mainServer := newHTTPServer(logger, config, jwkManager, m2mService, frontendFS, userService, serviceManager)
 	managementServer := newManagementServer(logger, config, jwkManager, m2mService)

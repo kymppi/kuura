@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/kymppi/kuura/internal/db_gen"
-	jwk_storage "github.com/kymppi/kuura/internal/jwks/storage"
+	jwk_storage "github.com/kymppi/kuura/internal/encrypted_storage"
 	"github.com/kymppi/kuura/internal/utils"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )

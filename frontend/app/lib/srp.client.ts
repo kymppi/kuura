@@ -27,8 +27,8 @@ export interface SRPClientInstance {
 }
 
 export class SRPClient {
-  private pf: PrimeField;
-  private h: string = 'SHA-256';
+  private readonly pf: PrimeField;
+  private readonly h: string = 'SHA-256';
 
   constructor(primeField: PrimeField) {
     this.pf = primeField;

@@ -1,76 +1,17 @@
-import { Button, Form, PasswordInput, Stack, TextInput } from '@carbon/react';
-import { useEffect, useState } from 'react';
-import { SRPAuthClient } from '../lib/auth.client';
-import { getServiceInfo, type ServiceInfo } from '../lib/service.client';
-import { DefaultPrimeField } from '../lib/srp.client';
+import { Button, PasswordInput, Stack, TextInput } from '@carbon/react';
+import { useState } from 'react';
+import { Form } from 'react-router';
+import { useAuthentication } from '../hooks/useAuthentication';
+import type { ServiceInfo } from '../lib/service.client';
 
-const client = new SRPAuthClient('', DefaultPrimeField);
-
-export default function LoginPage() {
-  const [serviceData, setServiceData] = useState<ServiceInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchServiceInfo = async () => {
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const serviceId = urlParams.get('service');
-
-        if (serviceId) {
-          setIsLoading(true);
-          const data = await getServiceInfo(serviceId);
-          setServiceData(data);
-        } else {
-          setIsLoading(true);
-          const data = await getServiceInfo();
-          setServiceData(data);
-        }
-      } catch (err) {
-        setError('Failed to load service information');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchServiceInfo();
-  }, []);
-
-  return (
-    <div
-      style={{
-        display: 'grid',
-        placeItems: 'center',
-        height: '100%',
-        padding: '1rem',
-        backgroundImage: 'url("/login.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '32rem',
-          padding: '1rem',
-          backgroundColor: 'white',
-        }}
-      >
-        {isLoading ? (
-          <p>Loading service information...</p>
-        ) : error ? (
-          <p>{error}</p>
-        ) : serviceData ? (
-          <LoginForm info={serviceData} />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function LoginForm({ info }: { info: ServiceInfo }) {
+export default function LoginForm({
+  info,
+  returnTo,
+}: {
+  readonly info: ServiceInfo;
+  readonly returnTo: string;
+}) {
+  const { client } = useAuthentication();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -97,13 +38,13 @@ function LoginForm({ info }: { info: ServiceInfo }) {
       setInlineError(result.error);
     } else {
       setInlineError(null);
-      window.location.href = info.redirects.login;
+      window.location.href = returnTo;
     }
   };
 
   return (
     <Form onSubmit={handleSubmit}>
-      <Stack gap={7}>
+      <Stack gap={8}>
         <Stack gap="0.25rem">
           <h1>Log in to {info.name}</h1>
           <p>

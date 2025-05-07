@@ -56,7 +56,7 @@ type CreateUserSessionParams struct {
 	ID               string             `json:"id"`
 	UserID           string             `json:"user_id"`
 	ServiceID        pgtype.UUID        `json:"service_id"`
-	RefreshTokenHash string             `json:"refresh_token_hash"`
+	RefreshTokenHash pgtype.Text        `json:"refresh_token_hash"`
 	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
 }
 
@@ -69,6 +69,35 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 		arg.ExpiresAt,
 	)
 	return err
+}
+
+const deleteUserSession = `-- name: DeleteUserSession :exec
+DELETE FROM user_sessions
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteUserSessionParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) error {
+	_, err := q.db.Exec(ctx, deleteUserSession, arg.ID, arg.UserID)
+	return err
+}
+
+const getAccessTokenDurationUsingSessionId = `-- name: GetAccessTokenDurationUsingSessionId :one
+SELECT svc.access_token_duration
+FROM services AS svc
+JOIN user_sessions AS us ON us.service_id = svc.id
+WHERE us.id = $1
+`
+
+func (q *Queries) GetAccessTokenDurationUsingSessionId(ctx context.Context, id string) (int32, error) {
+	row := q.db.QueryRow(ctx, getAccessTokenDurationUsingSessionId, id)
+	var access_token_duration int32
+	err := row.Scan(&access_token_duration)
+	return access_token_duration, err
 }
 
 const getAndDeleteSRPServer = `-- name: GetAndDeleteSRPServer :one
@@ -169,6 +198,22 @@ func (q *Queries) GetUserSession(ctx context.Context, id string) (UserSession, e
 	return i, err
 }
 
+const insertCodeToSessionTokenExchange = `-- name: InsertCodeToSessionTokenExchange :exec
+INSERT INTO user_token_code_exchange (session_id, expires_at, hashed_code)
+VALUES ($1, $2, $3)
+`
+
+type InsertCodeToSessionTokenExchangeParams struct {
+	SessionID  string             `json:"session_id"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	HashedCode string             `json:"hashed_code"`
+}
+
+func (q *Queries) InsertCodeToSessionTokenExchange(ctx context.Context, arg InsertCodeToSessionTokenExchangeParams) error {
+	_, err := q.db.Exec(ctx, insertCodeToSessionTokenExchange, arg.SessionID, arg.ExpiresAt, arg.HashedCode)
+	return err
+}
+
 const rotateUserSessionRefreshToken = `-- name: RotateUserSessionRefreshToken :exec
 UPDATE user_sessions
 SET refresh_token_hash = $1
@@ -176,8 +221,8 @@ WHERE id = $2
 `
 
 type RotateUserSessionRefreshTokenParams struct {
-	RefreshTokenHash string `json:"refresh_token_hash"`
-	ID               string `json:"id"`
+	RefreshTokenHash pgtype.Text `json:"refresh_token_hash"`
+	ID               string      `json:"id"`
 }
 
 func (q *Queries) RotateUserSessionRefreshToken(ctx context.Context, arg RotateUserSessionRefreshTokenParams) error {
@@ -223,4 +268,20 @@ type UpsertSRPServerParams struct {
 func (q *Queries) UpsertSRPServer(ctx context.Context, arg UpsertSRPServerParams) error {
 	_, err := q.db.Exec(ctx, upsertSRPServer, arg.Uid, arg.EncodedServer, arg.ExpiresAt)
 	return err
+}
+
+const useTokenExchangeCode = `-- name: UseTokenExchangeCode :one
+DELETE FROM user_token_code_exchange AS token
+WHERE token.hashed_code = $1
+  AND token.expires_at > NOW()
+  AND token.session_id = session.id
+RETURNING
+    token.session_id
+`
+
+func (q *Queries) UseTokenExchangeCode(ctx context.Context, hashedCode string) (string, error) {
+	row := q.db.QueryRow(ctx, useTokenExchangeCode, hashedCode)
+	var session_id string
+	err := row.Scan(&session_id)
+	return session_id, err
 }

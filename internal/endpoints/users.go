@@ -119,7 +119,7 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 				return
 			}
 
-			setAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
+			setInternalAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
 
 			data := response{
 				Success: true,
@@ -131,19 +131,18 @@ func V1_SRP_ClientVerify(logger *slog.Logger, userService *users.UserService, pu
 	)
 }
 
-func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserService, publicKuuraDomain string) http.HandlerFunc {
+func V1_User_RefreshInternalToken(logger *slog.Logger, userService *users.UserService, publicKuuraDomain string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// read session_id, refresh_token cookies
-		sessionCookie, err := r.Cookie(constants.SESSION_COOKIE)
+		sessionCookie, err := r.Cookie(constants.INTERNAL_SESSION_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.SESSION_COOKIE)).WithMetadata("cookie", constants.SESSION_COOKIE))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_SESSION_COOKIE)).WithMetadata("cookie", constants.INTERNAL_SESSION_COOKIE))
 			return
 		}
 		sessionId := sessionCookie.Value
 
-		refreshCookie, err := r.Cookie(constants.REFRESH_TOKEN_COOKIE)
+		refreshCookie, err := r.Cookie(constants.INTERNAL_REFRESH_TOKEN_COOKIE)
 		if err != nil {
-			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", constants.REFRESH_TOKEN_COOKIE))
+			handleErr(w, r, logger, errs.New(errcode.MissingCookie, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_REFRESH_TOKEN_COOKIE)).WithMetadata("cookie", constants.INTERNAL_REFRESH_TOKEN_COOKIE))
 			return
 		}
 		initialRefreshToken := refreshCookie.Value
@@ -154,7 +153,7 @@ func V1_User_RefreshAccessToken(logger *slog.Logger, userService *users.UserServ
 			return
 		}
 
-		setAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
+		setInternalAuthCookies(w, sessionId, tokenInfo, publicKuuraDomain)
 
 		safeEncode(w, r, logger, http.StatusOK, map[string]any{
 			"success": true,
@@ -173,9 +172,9 @@ func V1_ME(logger *slog.Logger, users *users.UserService, jwkManager *jwks.JWKMa
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			accessCookie, err := r.Cookie(constants.KUURA_ACCESS_TOKEN_COOKIE)
+			accessCookie, err := r.Cookie(constants.INTERNAL_ACCESS_TOKEN_COOKIE)
 			if err != nil {
-				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.KUURA_ACCESS_TOKEN_COOKIE)))
+				handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_ACCESS_TOKEN_COOKIE)))
 				return
 			}
 			token := accessCookie.Value
@@ -248,12 +247,12 @@ func extractServiceIdFromToken(tokenString string) (*uuid.UUID, error) {
 	return &parsedUUID, nil
 }
 
-func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.TokenInfo, publicKuuraDomain string) {
+func setInternalAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.TokenInfo, publicKuuraDomain string) {
 	// refresh token
 	http.SetCookie(w, &http.Cookie{
-		Name:     constants.REFRESH_TOKEN_COOKIE,
+		Name:     constants.INTERNAL_REFRESH_TOKEN_COOKIE,
 		Value:    tokenInfo.RefreshToken,
-		Path:     "/v1/user/access",
+		Path:     constants.INTERNAL_USER_REFRESH_PATH,
 		MaxAge:   60 * 60 * 24 * 7, // week in seconds
 		HttpOnly: true,
 		Secure:   true,
@@ -263,7 +262,7 @@ func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.To
 
 	// session
 	http.SetCookie(w, &http.Cookie{
-		Name:     constants.SESSION_COOKIE,
+		Name:     constants.INTERNAL_SESSION_COOKIE,
 		Value:    sessionId,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24 * 30, // month in seconds
@@ -275,13 +274,255 @@ func setAuthCookies(w http.ResponseWriter, sessionId string, tokenInfo *users.To
 
 	// service specific access token
 	http.SetCookie(w, &http.Cookie{
-		Name:     tokenInfo.ServiceAccessCookieName,
+		Name:     constants.INTERNAL_ACCESS_TOKEN_COOKIE,
 		Value:    tokenInfo.AccessToken,
 		Path:     "/",
 		MaxAge:   int(tokenInfo.AccessTokenDuration.Seconds()),
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
-		Domain:   tokenInfo.ServiceDomain,
+		Domain:   publicKuuraDomain,
 	})
+}
+
+func clearInternalAuthCookies(w http.ResponseWriter, publicKuuraDomain string) {
+	// Clear refresh token
+	http.SetCookie(w, &http.Cookie{
+		Name:     constants.INTERNAL_REFRESH_TOKEN_COOKIE,
+		Value:    "",
+		Path:     constants.INTERNAL_USER_REFRESH_PATH,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Domain:   publicKuuraDomain,
+	})
+
+	// Clear session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     constants.INTERNAL_SESSION_COOKIE,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   publicKuuraDomain,
+	})
+
+	// Clear access token
+	http.SetCookie(w, &http.Cookie{
+		Name:     constants.INTERNAL_ACCESS_TOKEN_COOKIE,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   publicKuuraDomain,
+	})
+}
+
+func V1_User_Logout(logger *slog.Logger, userService *users.UserService, publicKuuraDomain string, jwkManager *jwks.JWKManager, jwtIssuer string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		accessCookie, err := r.Cookie(constants.INTERNAL_ACCESS_TOKEN_COOKIE)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_ACCESS_TOKEN_COOKIE)))
+			return
+		}
+		token := accessCookie.Value
+
+		sessionCookie, err := r.Cookie(constants.INTERNAL_SESSION_COOKIE)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_SESSION_COOKIE)))
+			return
+		}
+		sessionId := sessionCookie.Value
+
+		serviceId, err := extractServiceIdFromToken(token)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
+			return
+		} else if serviceId == nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token without error")))
+			return
+		}
+
+		jwkSet, err := jwkManager.GetJWKS(ctx, *serviceId)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to get JWKS: %w", err)))
+			return
+		}
+
+		client, err := parseToken(token, &AuthConfig{
+			JWTIssuer: jwtIssuer,
+			JWKSet:    jwkSet,
+		})
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, err))
+			return
+		}
+
+		if err := userService.Logout(ctx, sessionId, client.Id); err != nil {
+			handleErr(w, r, logger, err)
+		}
+
+		clearInternalAuthCookies(w, publicKuuraDomain)
+
+		safeEncode(w, r, logger, http.StatusOK, map[string]any{
+			"success": true,
+		})
+	}
+}
+
+type v1ServiceUserTokens struct {
+	Code         string `json:"code,omitempty"`
+	SessionId    string `json:"session_id,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+func (r *v1ServiceUserTokens) Valid(ctx context.Context) (problems map[string]string) {
+	problems = make(map[string]string)
+
+	usingCode := r.Code != ""
+	usingRefresh := r.SessionId != "" || r.RefreshToken != ""
+
+	switch {
+	case usingCode && usingRefresh:
+		problems["code"] = "cannot provide both 'code' and 'session_id'/'refresh_token'"
+	case !usingCode && !usingRefresh:
+		problems["code"] = "either 'code' or 'session_id' and 'refresh_token' must be provided"
+	case usingRefresh:
+		if r.SessionId == "" {
+			problems["session_id"] = "'session_id' cannot be empty when using refresh_token flow"
+		}
+		if r.RefreshToken == "" {
+			problems["refresh_token"] = "'refresh_token' cannot be empty when using refresh_token flow"
+		}
+	}
+
+	return problems
+}
+
+func V1_User_ExternalTokens(logger *slog.Logger, userService *users.UserService) http.HandlerFunc {
+	type response struct {
+		AccessToken         string `json:"access_token"`
+		RefreshToken        string `json:"refresh_token"`
+		SessionId           string `json:"session_id"`
+		AccessTokenDuration int    `json:"access_token_duration_seconds"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := decodeValid[*v1ServiceUserTokens](r)
+		if err != nil {
+			handleErr(w, r, logger, err)
+			return
+		}
+
+		var tokenInfo *users.TokenInfo
+
+		if data.Code != "" {
+			info, err := userService.CreateAccessTokenUsingCode(r.Context(), data.Code)
+			if err != nil {
+				handleErr(w, r, logger, err)
+				return
+			}
+
+			tokenInfo = info
+		} else {
+			info, err := userService.CreateAccessToken(r.Context(), data.SessionId, data.RefreshToken)
+			if err != nil {
+				handleErr(w, r, logger, err)
+				return
+			}
+
+			tokenInfo = info
+		}
+
+		safeEncode(w, r, logger, http.StatusOK, response{
+			AccessToken:         tokenInfo.AccessToken,
+			RefreshToken:        tokenInfo.RefreshToken,
+			SessionId:           tokenInfo.SessionId,
+			AccessTokenDuration: int(tokenInfo.AccessTokenDuration.Seconds()),
+		})
+	}
+}
+
+type v1UserLoginToService struct {
+	ServiceId string `json:"service_id"`
+}
+
+func (r *v1UserLoginToService) Valid(ctx context.Context) (problems map[string]string) {
+	problems = make(map[string]string)
+
+	if r.ServiceId == "" {
+		problems["service_id"] = "'service_id' cannot be empty"
+	}
+
+	return problems
+}
+
+func V1_User_LoginExternal(logger *slog.Logger, userService *users.UserService, jwkManager *jwks.JWKManager, jwtIssuer string) http.HandlerFunc {
+	type response struct {
+		RedirectURL string `json:"redirect_url"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := decodeValid[*v1UserLoginToService](r)
+		if err != nil {
+			handleErr(w, r, logger, err)
+			return
+		}
+
+		serviceId, err := uuid.Parse(data.ServiceId)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.InvalidServiceId, err))
+			return
+		}
+
+		ctx := r.Context()
+
+		accessCookie, err := r.Cookie(constants.INTERNAL_ACCESS_TOKEN_COOKIE)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("'%s' cookie not found", constants.INTERNAL_ACCESS_TOKEN_COOKIE)))
+			return
+		}
+		token := accessCookie.Value
+
+		currentSessionServiceId, err := extractServiceIdFromToken(token)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token: %w", err)))
+			return
+		} else if currentSessionServiceId == nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to extract serviceId from token without error")))
+			return
+		}
+
+		jwkSet, err := jwkManager.GetJWKS(ctx, *currentSessionServiceId)
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, fmt.Errorf("failed to get JWKS: %w", err)))
+			return
+		}
+
+		client, err := parseToken(token, &AuthConfig{
+			JWTIssuer: jwtIssuer,
+			JWKSet:    jwkSet,
+		})
+		if err != nil {
+			handleErr(w, r, logger, errs.New(errcode.Unauthorized, err))
+			return
+		}
+
+		redirectUrl, err := userService.LoginToService(ctx, client.Id, serviceId)
+		if err != nil {
+			handleErr(w, r, logger, err)
+			return
+		}
+
+		safeEncode(w, r, logger, http.StatusOK, response{
+			RedirectURL: redirectUrl,
+		})
+	}
 }

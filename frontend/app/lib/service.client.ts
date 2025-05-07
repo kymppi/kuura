@@ -13,7 +13,7 @@ export interface ServiceInfo {
 export const getServiceInfo = async (
   serviceId?: string
 ): Promise<ServiceInfo> => {
-  const id = serviceId ? serviceId : 'kuura';
+  const id = serviceId ?? 'kuura';
 
   const data = await fetch(`/v1/service/${id}`);
   if (!data.ok) {

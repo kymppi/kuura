@@ -16,9 +16,11 @@ type UserService struct {
 	jwtIssuer   string
 	jwkManager  *jwks.JWKManager
 	services    *services.ServiceManager
+
+	tokenCodeHashingSecret []byte
 }
 
-func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, jwkManager *jwks.JWKManager, services *services.ServiceManager) *UserService {
+func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, jwkManager *jwks.JWKManager, services *services.ServiceManager, tokenCodeHashingSecret []byte) *UserService {
 	return &UserService{
 		logger: logger,
 		db:     db,
@@ -29,8 +31,9 @@ func NewUserService(logger *slog.Logger, db *db_gen.Queries, jwtIssuer string, j
 			SaltLength:  16,
 			KeyLength:   32,
 		}),
-		jwtIssuer:  jwtIssuer,
-		jwkManager: jwkManager,
-		services:   services,
+		jwtIssuer:              jwtIssuer,
+		jwkManager:             jwkManager,
+		services:               services,
+		tokenCodeHashingSecret: tokenCodeHashingSecret,
 	}
 }

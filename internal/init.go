@@ -8,6 +8,8 @@ import (
 
 	"github.com/kymppi/kuura/internal/db_gen"
 	"github.com/kymppi/kuura/internal/jwks"
+	"github.com/kymppi/kuura/internal/services"
+	"github.com/kymppi/kuura/internal/users"
 )
 
 // setup db, check migration status
@@ -42,6 +44,30 @@ func InitializeJWKManager(ctx context.Context, logger *slog.Logger, config *Conf
 	storage := jwks.NewPostgresQLKeyStorage(queries, encryptionKey)
 
 	return jwks.NewJWKManager(storage), nil
+}
+
+func InitializeUserService(
+	ctx context.Context,
+	logger *slog.Logger,
+	config *Config,
+	queries *db_gen.Queries,
+	jwkManager *jwks.JWKManager,
+	serviceManager *services.ServiceManager,
+) (*users.UserService, error) {
+	secretKey, err := loadEncryptionKey(config.USER_CODE_SECRET_KEY_PATH)
+	if err != nil {
+		logger.Error("Failed to load secret key for user codes", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	return users.NewUserService(
+		logger,
+		queries,
+		config.JWT_ISSUER,
+		jwkManager,
+		serviceManager,
+		secretKey,
+	), nil
 }
 
 func loadEncryptionKey(path string) ([]byte, error) {

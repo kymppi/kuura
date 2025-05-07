@@ -60,3 +60,25 @@ WHERE id = $1;
 -- name: GetUser :one
 SELECT id, username, last_login_at FROM users
 WHERE id = $1;
+
+-- name: InsertCodeToSessionTokenExchange :exec
+INSERT INTO user_token_code_exchange (session_id, expires_at, hashed_code)
+VALUES ($1, $2, $3);
+
+-- name: UseTokenExchangeCode :one
+DELETE FROM user_token_code_exchange AS token
+WHERE token.hashed_code = $1
+  AND token.expires_at > NOW()
+  AND token.session_id = session.id
+RETURNING
+    token.session_id;
+
+-- name: GetAccessTokenDurationUsingSessionId :one
+SELECT svc.access_token_duration
+FROM services AS svc
+JOIN user_sessions AS us ON us.service_id = svc.id
+WHERE us.id = $1;
+
+-- name: DeleteUserSession :exec
+DELETE FROM user_sessions
+WHERE id = $1 AND user_id = $2;

@@ -54,12 +54,10 @@ type Service struct {
 	ModifiedAt          time.Time          `json:"modified_at"`
 	Name                string             `json:"name"`
 	Description         pgtype.Text        `json:"description"`
-	ApiDomain           string             `json:"api_domain"`
 	ContactName         string             `json:"contact_name"`
 	ContactEmail        string             `json:"contact_email"`
 	LoginRedirect       string             `json:"login_redirect"`
 	AccessTokenDuration int32              `json:"access_token_duration"`
-	AccessTokenCookie   string             `json:"access_token_cookie"`
 }
 
 type ServiceKeyState struct {
@@ -83,7 +81,7 @@ type UserSession struct {
 	ID                  string             `json:"id"`
 	UserID              string             `json:"user_id"`
 	ServiceID           pgtype.UUID        `json:"service_id"`
-	RefreshTokenHash    string             `json:"refresh_token_hash"`
+	RefreshTokenHash    pgtype.Text        `json:"refresh_token_hash"`
 	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	LastAuthenticatedAt pgtype.Timestamptz `json:"last_authenticated_at"`
@@ -93,4 +91,11 @@ type UserSrp struct {
 	Uid           string             `json:"uid"`
 	EncodedServer []byte             `json:"encoded_server"`
 	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+}
+
+type UserTokenCodeExchange struct {
+	SessionID  string             `json:"session_id"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	HashedCode string             `json:"hashed_code"`
 }
