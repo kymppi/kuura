@@ -25,8 +25,6 @@ func addMainRoutes(
 	publicKuuraDomain string,
 	jwtIssuer string,
 ) {
-	mux.Handle("/", http.NotFoundHandler())
-
 	mux.Handle("GET /v1/service/{serviceId}/jwks.json", endpoints.V1JwksHandler(logger, jwkManager))
 	mux.Handle("GET /v1/service/{serviceId}", endpoints.V1_ServiceInfo(logger, serviceManager))
 
