@@ -42,7 +42,7 @@ func addMainRoutes(
 	mux.Handle("POST /v1/srp/begin", endpoints.V1_SRP_ClientBegin(logger, userService))
 	mux.Handle("POST /v1/srp/verify", endpoints.V1_SRP_ClientVerify(logger, userService, publicKuuraDomain))
 
-	mux.Handle("GET /", endpoints.AstroHandler(logger, frontendFS))
+	mux.Handle("GET /", endpoints.FrontendHandler(logger, frontendFS))
 
 	// authenticated management endpoints
 }
