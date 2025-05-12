@@ -2,6 +2,8 @@ package endpoints
 
 import (
 	"embed"
+	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -23,9 +25,7 @@ func FrontendHandler(logger *slog.Logger, files embed.FS) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
-		f, err := filesystem.Open(strings.TrimPrefix(path, "/"))
-		if err == nil {
-			f.Close()
+		if _, err := filesystem.Open(strings.TrimPrefix(path, "/")); err == nil {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
@@ -35,7 +35,24 @@ func FrontendHandler(logger *slog.Logger, files embed.FS) http.Handler {
 			return
 		}
 
-		r.URL.Path = "/index.html"
-		fileServer.ServeHTTP(w, r)
+		indexFile, err := filesystem.Open("index.html")
+		if err != nil {
+			logger.Error("Failed to open index.html", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		defer indexFile.Close()
+
+		stat, err := indexFile.Stat()
+		if err != nil {
+			logger.Error("Failed to stat index.html", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", stat.Size()))
+
+		io.Copy(w, indexFile)
 	})
 }
