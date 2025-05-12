@@ -47,6 +47,6 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/manifoldco/promptui v0.9.0
 	github.com/oklog/ulid/v2 v2.1.0
-	github.com/opencoff/go-srp v0.6.4
+	github.com/opencoff/go-srp v0.6.5
 	github.com/spf13/cobra v1.9.1
 )
