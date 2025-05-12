@@ -274,9 +274,8 @@ const useTokenExchangeCode = `-- name: UseTokenExchangeCode :one
 DELETE FROM user_token_code_exchange AS token
 WHERE token.hashed_code = $1
   AND token.expires_at > NOW()
-  AND token.session_id = session.id
 RETURNING
-    token.session_id
+  token.session_id
 `
 
 func (q *Queries) UseTokenExchangeCode(ctx context.Context, hashedCode string) (string, error) {

@@ -69,9 +69,8 @@ VALUES ($1, $2, $3);
 DELETE FROM user_token_code_exchange AS token
 WHERE token.hashed_code = $1
   AND token.expires_at > NOW()
-  AND token.session_id = session.id
 RETURNING
-    token.session_id;
+  token.session_id;
 
 -- name: GetAccessTokenDurationUsingSessionId :one
 SELECT svc.access_token_duration
