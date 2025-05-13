@@ -40,7 +40,7 @@ require (
 )
 
 require (
-	github.com/exaring/otelpgx v0.9.1
+	github.com/exaring/otelpgx v0.9.3
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
